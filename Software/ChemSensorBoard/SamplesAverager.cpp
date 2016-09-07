@@ -1,23 +1,25 @@
-/* ========================================================================
+/* ===========================================================================
  * Copyright 2015 EUROPEAN UNION
  *
- * Licensed under the EUPL, Version 1.1 or - as soon they will be approved by 
- * the European Commission - subsequent versions of the EUPL (the "Licence"); 
- * You may not use this work except in compliance with the Licence. 
- * You may obtain a copy of the Licence at: http://ec.europa.eu/idabc/eupl
- * Unless required by applicable law or agreed to in writing, software distributed 
- * under the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR 
- * CONDITIONS OF ANY KIND, either express or implied. See the Licence for the 
- * specific language governing permissions and limitations under the Licence.
+ * Licensed under the EUPL, Version 1.1 or subsequent versions of the
+ * EUPL (the "License"); You may not use this work except in compliance
+ * with the License. You may obtain a copy of the License at
+ * http://ec.europa.eu/idabc/eupl
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Date: 02/04/2015
- * Authors
- * - Michel Gerboles  - michel.gerboles@jrc.ec.europa.eu,  
- *                     European Commission - Joint Research Centre, 
- * - Laurent Spinelle - laurent.spinelle@jrc.ec.europa.eu,
- *                     European Commission - Joint Research Centre, 
- * - Marco Signorini  - marco.signorini@liberaintentio.com
- * 
- * ======================================================================== 
+ * Authors:
+ * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
+ *   Laurent Spinelle – laurent.spinelle@jrc.ec.europa.eu and 
+ *   Alexander Kotsev - alexander.kotsev@jrc.ec.europa.eu,
+ *   European Commission - Joint Research Centre, 
+ * - Marco Signorini, marco.signorini@liberaintentio.com
+ *
+ * ===========================================================================
  */
  
 #include <Arduino.h>
@@ -28,7 +30,7 @@
 
 DitherTool* SamplesAverager::ditherTool = (DitherTool*)0x00;
 
-SamplesAverager::SamplesAverager() : timestamp(0) {
+SamplesAverager::SamplesAverager() {
     reset();
 }
 
@@ -39,12 +41,14 @@ SamplesAverager::~SamplesAverager() {
 }
 
 void SamplesAverager::reset() {
-        
+
+    timestamp = 0;    
     bufferSize = 0;
     sampleOffset = 0;
     dataBuffer = 0;
     accumulator = 0;
     lastAverageSample = 0;
+    consolidated = false;
 }
 
 unsigned char SamplesAverager::init(unsigned char size) {
@@ -88,14 +92,23 @@ bool SamplesAverager::collectSample(unsigned short sample, unsigned long _timest
     if (sampleOffset == bufferSize) {
         sampleOffset = 0;
         timestamp = _timestamp;
+        consolidated = true;
         
         lastAverageSample = (unsigned short)ditherTool->applyDithering(((double)accumulator)/bufferSize);
         return true;
     }
-    
+
     // Call for a dithering reseed. This will be done
     // only once even if called several times
     ditherTool->reSeed(sample);
+
+    // We prefer to send back a set of unfiltered samples instead of zero
+    // for the very beginning of the filter's life. 
+    if (!consolidated) {
+      lastAverageSample = sample;
+      timestamp = _timestamp;
+      return true;
+    }
     
     return false;
 }

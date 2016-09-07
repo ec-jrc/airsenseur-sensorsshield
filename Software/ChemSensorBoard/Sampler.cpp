@@ -1,23 +1,25 @@
-/* ========================================================================
+/* ===========================================================================
  * Copyright 2015 EUROPEAN UNION
  *
- * Licensed under the EUPL, Version 1.1 or - as soon they will be approved by 
- * the European Commission - subsequent versions of the EUPL (the "Licence"); 
- * You may not use this work except in compliance with the Licence. 
- * You may obtain a copy of the Licence at: http://ec.europa.eu/idabc/eupl
- * Unless required by applicable law or agreed to in writing, software distributed 
- * under the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR 
- * CONDITIONS OF ANY KIND, either express or implied. See the Licence for the 
- * specific language governing permissions and limitations under the Licence.
+ * Licensed under the EUPL, Version 1.1 or subsequent versions of the
+ * EUPL (the "License"); You may not use this work except in compliance
+ * with the License. You may obtain a copy of the License at
+ * http://ec.europa.eu/idabc/eupl
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Date: 02/04/2015
- * Authors
- * - Michel Gerboles  - michel.gerboles@jrc.ec.europa.eu,  
- *                     European Commission - Joint Research Centre, 
- * - Laurent Spinelle - laurent.spinelle@jrc.ec.europa.eu,
- *                     European Commission - Joint Research Centre, 
- * - Marco Signorini  - marco.signorini@liberaintentio.com
- * 
- * ======================================================================== 
+ * Authors:
+ * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
+ *   Laurent Spinelle – laurent.spinelle@jrc.ec.europa.eu and 
+ *   Alexander Kotsev - alexander.kotsev@jrc.ec.europa.eu,
+ *   European Commission - Joint Research Centre, 
+ * - Marco Signorini, marco.signorini@liberaintentio.com
+ *
+ * ===========================================================================
  */
 
 
@@ -26,6 +28,8 @@
 #include "Sampler.h"
 #include "Persistence.h"
 
+#define DEFAULT_BLANK_TIMER_PERIOD 5
+
 DitherTool* Sampler::ditherTool = (DitherTool*)0x00;
 
 Sampler::Sampler() {
@@ -33,7 +37,9 @@ Sampler::Sampler() {
     prescaler = 0;
     timer = 0;
     decimation = 0; 
-    decimationTimer = 0; 
+    decimationTimer = 0;
+    blankTimer = DEFAULT_BLANK_TIMER_PERIOD;
+    workSample = 0; 
     lastSample = 0;
     iIRDenum[0] = 0;
     iIRDenum[1] = 0;
@@ -53,6 +59,7 @@ unsigned char Sampler::getPrescaler() {
 void Sampler::setDecimation(unsigned char value) {
     decimation = value; 
     decimationTimer = 0;
+    blankTimer = DEFAULT_BLANK_TIMER_PERIOD;
 }
 
 unsigned char Sampler::getDecimation() {
@@ -67,12 +74,19 @@ bool Sampler::applyDecimationFilter() {
     
     if (decimationTimer == decimation) {
         decimationTimer = 0;
-        return true;
+
+        // Update the lastSample only after
+        // elapsed blank period
+        if (blankTimer != 0) {
+          blankTimer--;
+        } else {
+          lastSample = workSample;
+        }
+    } else {
+      decimationTimer++;
     }
 
-    decimationTimer++;
-    
-    return false;
+    return ((decimationTimer == 0) || (blankTimer != 0));
 }
 
 unsigned char Sampler::getIIRDenom(unsigned char iIRID) {
@@ -99,7 +113,7 @@ void Sampler::setDitherTool(DitherTool* tool) {
     ditherTool = tool;
 }
 
-// Apply the IIR filter. Input and Output are from/to lastSample
+// Apply the IIR filter. Input and Output are from/to workSample
 void Sampler::applyIIRFilter(unsigned char iiRID) {
 
     if (iiRID > 1)
@@ -115,11 +129,15 @@ void Sampler::applyIIRFilter(unsigned char iiRID) {
     double* S = iIRAccumulator + iiRID;
     
     // S(n) = S(n-1) + 1/den * (I(n) - S(n-1))
-    *S = *S + ((double)lastSample - *S)/(*denom);
+    *S = *S + ((double)workSample - *S)/(*denom);
     
-    lastSample = (unsigned short)(ditherTool->applyDithering(*S));
+    workSample = (unsigned short)(ditherTool->applyDithering(*S));
 }
 
+void Sampler::onReadSample(unsigned short newSample) {
+    lastSample = newSample;
+    workSample = newSample;
+}
 
 bool Sampler::loadPreset(unsigned char myID) {
 

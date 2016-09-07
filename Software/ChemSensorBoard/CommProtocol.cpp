@@ -1,23 +1,25 @@
-/* ========================================================================
+/* ===========================================================================
  * Copyright 2015 EUROPEAN UNION
  *
- * Licensed under the EUPL, Version 1.1 or - as soon they will be approved by 
- * the European Commission - subsequent versions of the EUPL (the "Licence"); 
- * You may not use this work except in compliance with the Licence. 
- * You may obtain a copy of the Licence at: http://ec.europa.eu/idabc/eupl
- * Unless required by applicable law or agreed to in writing, software distributed 
- * under the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR 
- * CONDITIONS OF ANY KIND, either express or implied. See the Licence for the 
- * specific language governing permissions and limitations under the Licence.
+ * Licensed under the EUPL, Version 1.1 or subsequent versions of the
+ * EUPL (the "License"); You may not use this work except in compliance
+ * with the License. You may obtain a copy of the License at
+ * http://ec.europa.eu/idabc/eupl
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
  * Date: 02/04/2015
- * Authors
- * - Michel Gerboles  - michel.gerboles@jrc.ec.europa.eu,  
- *                     European Commission - Joint Research Centre, 
- * - Laurent Spinelle - laurent.spinelle@jrc.ec.europa.eu,
- *                     European Commission - Joint Research Centre, 
- * - Marco Signorini  - marco.signorini@liberaintentio.com
- * 
- * ======================================================================== 
+ * Authors:
+ * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
+ *   Laurent Spinelle – laurent.spinelle@jrc.ec.europa.eu and 
+ *   Alexander Kotsev - alexander.kotsev@jrc.ec.europa.eu,
+ *   European Commission - Joint Research Centre, 
+ * - Marco Signorini, marco.signorini@liberaintentio.com
+ *
+ * ===========================================================================
  */
 
 
@@ -27,6 +29,8 @@
 #include <avr/pgmspace.h>
 #include "SensorsArray.h"
 #include "CommProtocol.h"
+
+#define COMMPROTOCOL_TIMEOUT  500   /* in 10ms steps -> 5seconds */
 
 const CommProtocol::commandinfo CommProtocol::validCommands[] PROGMEM = {
 
@@ -69,22 +73,25 @@ void CommProtocol::reset() {
 }
 
 void CommProtocol::timerTick() {
-    
-    timer++;
-    
-    // TBD: handle timeouts on communication channel
+
+    if (rxStatus != RX_IDLE) {
+
+        timer++;
+        if (timer >= COMMPROTOCOL_TIMEOUT) {
+            reset();
+        }
+    }
 }
 
 void CommProtocol::onDataReceived(unsigned char pivotChar) {
     
     switch (rxStatus) {
         case RX_IDLE: {
-                // Searching for an header
-                if (pivotChar == COMMPROTOCOL_HEADER) {
-                    memset(buffer, 0, sizeof(buffer));
-                    offset = 0;
-                    rxStatus = RX_HEADER_FOUND;
-                }
+            // Searching for an header
+            if (pivotChar == COMMPROTOCOL_HEADER) {
+                reset();
+                rxStatus = RX_HEADER_FOUND;
+            }
         }
             break;
 
