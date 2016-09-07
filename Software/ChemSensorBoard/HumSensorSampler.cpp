@@ -14,9 +14,9 @@
  * Date: 02/04/2015
  * Authors:
  * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
- *   Laurent Spinelle – laurent.spinelle@jrc.ec.europa.eu and 
- *   Alexander Kotsev - alexander.kotsev@jrc.ec.europa.eu,
- *   European Commission - Joint Research Centre, 
+ *   Laurent Spinelle, laurent.spinelle@jrc.ec.europa.eu and 
+ *   Alexander Kotsev, alexander.kotsev@jrc.ec.europa.eu:
+ *			European Commission - Joint Research Centre, 
  * - Marco Signorini, marco.signorini@liberaintentio.com
  *
  * ===========================================================================
