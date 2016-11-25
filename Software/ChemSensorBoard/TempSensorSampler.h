@@ -26,11 +26,11 @@
 #define	TEMPSENSORSAMPLER_H
 
 #include "Sampler.h"
-#include "UR100CD.h"
+#include "SHT31.h"
 
 class TempSensorSampler :public Sampler {
 public:
-    TempSensorSampler(const UR100CD &temp);
+    TempSensorSampler(const SHT31 &temp);
     virtual ~TempSensorSampler();
     
     virtual void setPreScaler(unsigned char value);
@@ -44,12 +44,12 @@ private:
     unsigned char startMeasureTime;     // we need to start sampling before reading
     bool startConversion;
     
-    unsigned short lastHumiditySample;  // the UR100CD is able to provide either the humidity value
+    unsigned short lastHumiditySample;  // the SHT31 is able to provide either the humidity value
                                         // We optimized the code footprint and timing having only one
                                         // sampler that handles temperature and humidity
     bool humiditySampleReady;
     
-    const UR100CD &sensor;              // the reference to the sensor
+    const SHT31 &sensor;              // the reference to the sensor
 };
 
 #endif	/* TEMPSENSORSAMPLER_H */

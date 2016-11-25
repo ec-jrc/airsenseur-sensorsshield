@@ -31,9 +31,6 @@
 
 #include "ChemSensorSampler.h"
 #include "SensorsArray.h"
-#include "LMP91000.h"
-#include "ADC16S626.h"
-#include "UR100CD.h"
 #include "CommProtocol.h"
 #include "Persistence.h"
 

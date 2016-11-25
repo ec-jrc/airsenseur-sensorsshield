@@ -29,8 +29,8 @@
 #include "LMP91000.h"
 #include "ADC16S626.h"
 #include "AD5694R.h"
-#include "UR100CD.h"
-#include "SFE_BMP180.h"
+#include "SHT31.h"
+#include "BMP280.h"
 #include "DitherTool.h"
 #include "SamplesAverager.h"
 
@@ -48,8 +48,8 @@
 
 #define NUM_OF_TOTAL_SENSORS    (HUMSENSOR_1 + 1)
 
-#define BMP180SENSOR_1          0x00
-#define UR100SENSOR_1           0x00
+#define BMP280SENSOR_1          0x00
+#define SHT31SENSOR_1           0x00
 
 #define DEFAULT_AVERAGE_SAMPLENUM       60
 
@@ -59,13 +59,7 @@ class SensorsArray {
 public:
     SensorsArray();
     virtual ~SensorsArray();
-    
-    const LMP91000* getAFE(unsigned char channel);
-    const ADC16S626* getADC(unsigned char channel);
-    const AD5694R* getDAC(unsigned char channel);
-    UR100CD* getUR100(unsigned char channel);
-    SFE_BMP180* getBMP180(unsigned char channel);
-    
+        
     unsigned char setSamplePrescaler(unsigned char channel, unsigned char prescaler);
     bool getSamplePrescaler(unsigned char channel, unsigned char* prescaler);
     unsigned char setSamplePostscaler(unsigned char channel, unsigned char postscaler);
@@ -96,8 +90,8 @@ private:
     static const LMP91000 AFEList[NUM_OF_CHEM_SENSORS];     // The analog frontend for chemical sensors
     static const ADC16S626 ADCList[NUM_OF_CHEM_SENSORS];    // The ADC devices for chemical sensors
     static const AD5694R DACList[NUM_OF_CHEM_SENSORS];      // The DAC devices for chemical sensors
-    static UR100CD ur100cd;                                 // Temperature and humidity sensor
-    static SFE_BMP180 bmp180;                               // Pressure sensor
+    static SHT31 sht31;                                     // Temperature and humidity sensor
+    static BMP280 bmp280;                                   // Pressure sensor
     static DitherTool ditherTool;                           // Dithering toolset
     
     Sampler* samplers[NUM_OF_TOTAL_SENSORS];                // Sampler units for all sensors

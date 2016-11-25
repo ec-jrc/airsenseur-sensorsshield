@@ -27,31 +27,20 @@
 #define	PRESSSENSORSAMPLER_H
 
 #include "Sampler.h"
-#include "SFE_BMP180.h"
+#include "BMP280.h"
 
 class PressSensorSampler : public Sampler {
 public:
-    PressSensorSampler(SFE_BMP180 &press);
+    PressSensorSampler(BMP280 &press);
     virtual ~PressSensorSampler();
     
     virtual void setPreScaler(unsigned char value);
-    virtual unsigned char getPrescaler();
     
     virtual bool sampleTick();
     virtual bool sampleLoop();
-    
-private:
-    typedef enum _status {
-        STATUS_START_TEMP,
-        STATUS_GET_TEMP,
-        STATUS_START_PRESS,
-        STATUS_SAMPLE
-    } status;
 
 private:
-    double     temperature;
-    status     mStatus;
-    SFE_BMP180 &sensor;                 // the reference to the sensor
+    BMP280     &sensor;                 // the reference to the sensor
 };
 
 #endif	/* PRESSSENSORSAMPLER_H */

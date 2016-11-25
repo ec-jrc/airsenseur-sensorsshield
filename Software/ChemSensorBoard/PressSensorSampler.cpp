@@ -24,38 +24,32 @@
 
 #include "PressSensorSampler.h"
 
-PressSensorSampler::PressSensorSampler(SFE_BMP180& press) : sensor(press) {
-    mStatus = STATUS_START_TEMP;
+PressSensorSampler::PressSensorSampler(BMP280& press) : sensor(press) {
 }
 
 PressSensorSampler::~PressSensorSampler() {
 }
 
 void PressSensorSampler::setPreScaler(unsigned char value) {
-    
-    if (value < 24) {
-        value = 24;
+
+    // We expect a maximum rate of 26.32Hz when the BMP280
+    // operates in normal mode, 16x oversampling
+    if (value < 4) {
+        value = 4;
     }
     
-    value = value + 1;
-    prescaler = value >> 2;    
+    prescaler = value;    
     timer = 0;
-    mStatus = STATUS_START_TEMP;
-}
-
-unsigned char PressSensorSampler::getPrescaler() {
-    
-    return (prescaler << 2);
 }
 
 bool PressSensorSampler::sampleTick() {
+
+    if (timer == prescaler) {
         
-    if (timer == (prescaler-1)) {
-        
+        // It's time for a new sample
         timer = 0;
         go = true;
-        
-        return (mStatus == STATUS_SAMPLE);
+        return true;
     }
     timer++;    
     
@@ -64,58 +58,24 @@ bool PressSensorSampler::sampleTick() {
 
 bool PressSensorSampler::sampleLoop() {
 
-    if (!go) {
-        return false;
+    // Take the new sample
+    if (go) {
+      double temperature = 0;
+      double pressure = 0;
+  
+      sensor.getTemperature(temperature);
+      sensor.getPressure(pressure);
+      
+      onReadSample((unsigned short) (pressure * 48));
+      go = false;            
+      
+      // Filter with two cascade single pole IIRs
+      applyIIRFilter(IIR1);
+      applyIIRFilter(IIR2);
+  
+      // Apply the decimation filter
+      return applyDecimationFilter();
     }
     
-    go = false;
-    bool result = false;
-    switch (mStatus) {
-        
-        case STATUS_START_TEMP: {
-            
-            sensor.startTemperature();
-            mStatus = STATUS_GET_TEMP;
-        }
-            break;
-            
-        case STATUS_GET_TEMP: {
-            
-            temperature = 0;
-            sensor.getTemperature(temperature);
-            mStatus = STATUS_START_PRESS;
-        }
-            break;
-                        
-        case STATUS_START_PRESS: {
-            sensor.startPressure(0);
-            mStatus = STATUS_SAMPLE;
-        }
-            break;
-            
-        case STATUS_SAMPLE: {
-            
-            double pressure = 0;
-            
-            sensor.getPressure(pressure, temperature);
-            
-            onReadSample((unsigned short) (pressure * 48));
-            
-            // Filter with two cascade single pole IIRs
-            applyIIRFilter(IIR1);
-            applyIIRFilter(IIR2);
-
-            // Apply the decimation filter
-            result = applyDecimationFilter();
-            
-            mStatus = STATUS_START_TEMP;
-        }
-            break;
-            
-        default:
-            mStatus = STATUS_START_TEMP;
-            break;
-    }
-    
-    return result;
+    return false;
 }

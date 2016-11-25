@@ -25,7 +25,7 @@
 
 #include "TempSensorSampler.h"
 
-TempSensorSampler::TempSensorSampler(const UR100CD& temp) : sensor(temp) {
+TempSensorSampler::TempSensorSampler(const SHT31& temp) : sensor(temp) {
     startMeasureTime = 0;
     lastHumiditySample = 0;
     startConversion = false;
@@ -37,8 +37,8 @@ TempSensorSampler::~TempSensorSampler() {
 
 void TempSensorSampler::setPreScaler(unsigned char value) {
     
-    if (prescaler < 10) {
-        prescaler = 10;
+    if (value < 10) {
+        value = 10;
     }
     
     prescaler = value;

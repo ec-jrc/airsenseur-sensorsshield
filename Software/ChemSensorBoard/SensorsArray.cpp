@@ -34,14 +34,17 @@
 const LMP91000 SensorsArray::AFEList[NUM_OF_CHEM_SENSORS] = { LMP91000(AFE_1_ENPIN), LMP91000(AFE_2_ENPIN), LMP91000(AFE_3_ENPIN), LMP91000(AFE_4_ENPIN) };
 const ADC16S626 SensorsArray::ADCList[NUM_OF_CHEM_SENSORS] = { ADC16S626(ADC_1_CSPIN), ADC16S626(ADC_2_CSPIN), ADC16S626(ADC_3_CSPIN), ADC16S626(ADC_4_CSPIN) };
 const AD5694R SensorsArray::DACList[NUM_OF_CHEM_SENSORS] = { AD5694R(DAC_1_GAINPIN, AD5694_SLAVE_1), AD5694R(DAC_2_GAINPIN, AD5694_SLAVE_2), AD5694R(DAC_3_GAINPIN, AD5694_SLAVE_3), AD5694R(DAC_4_GAINPIN, AD5694_SLAVE_4) };
-UR100CD SensorsArray::ur100cd = UR100CD();
-SFE_BMP180 SensorsArray::bmp180 = SFE_BMP180();
+SHT31 SensorsArray::sht31 = SHT31();
+BMP280 SensorsArray::bmp280 = BMP280();
 DitherTool SensorsArray::ditherTool = DitherTool();
 
 SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0) {
     
     // Initialize the internal coefficients for the pressure sensor
-    bmp180.begin();
+    bmp280.begin();
+
+    // Initialize the humidity sensor
+    sht31.begin();
     
     // Initialize the samplers and averagers array (yes, I know, this could be skipped but it's done for safety reasons)
     memset(samplers, 0, sizeof(samplers));
@@ -52,9 +55,9 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0) {
     samplers[CHEMSENSOR_2] = new ChemSensorSampler(ADCList[CHEMSENSOR_2]);
     samplers[CHEMSENSOR_3] = new ChemSensorSampler(ADCList[CHEMSENSOR_3]);
     samplers[CHEMSENSOR_4] = new ChemSensorSampler(ADCList[CHEMSENSOR_4]);
-    samplers[TEMPSENSOR_1] = new TempSensorSampler(ur100cd);
+    samplers[TEMPSENSOR_1] = new TempSensorSampler(sht31);
     samplers[HUMSENSOR_1] = new HumSensorSampler((TempSensorSampler*)samplers[TEMPSENSOR_1]);
-    samplers[PRESSENSOR_1] = new PressSensorSampler(bmp180);
+    samplers[PRESSENSOR_1] = new PressSensorSampler(bmp280);
     
     // Set the dithering tool. Being a static variable, all object share it so 
     // is possible to initialize only one sampler object.
@@ -87,26 +90,6 @@ SensorsArray::~SensorsArray() {
     }
 }
 
-
-const LMP91000* SensorsArray::getAFE(unsigned char channel) {
-    return AFEList + channel;
-}
-
-const ADC16S626* SensorsArray::getADC(unsigned char channel) {
-    return ADCList + channel;
-}
-
-const AD5694R* SensorsArray::getDAC(unsigned char channel) {
-    return DACList + channel;
-}
-
-UR100CD* SensorsArray::getUR100(unsigned char channel) {
-    return &ur100cd;
-}
-
-SFE_BMP180* SensorsArray::getBMP180(unsigned char channel) {
-    return &bmp180;
-}
 
 bool SensorsArray::timerTick() {
     
@@ -239,9 +222,9 @@ void SensorsArray::inquirySensor(unsigned char channel, unsigned char* buffer, u
     if (channel <= CHEMSENSOR_4) {
         AFEList[channel].getPresetName(buffer);
     } else if (channel == PRESSENSOR_1) {
-        strcpy((char*)buffer, "BMP180");
+        strcpy((char*)buffer, "BMP280");
     } else if ((channel == TEMPSENSOR_1) || (channel == HUMSENSOR_1)) {
-        strcpy((char*)buffer, "UR100CD");
+        strcpy((char*)buffer, "SHT31");
     }
 }
 
