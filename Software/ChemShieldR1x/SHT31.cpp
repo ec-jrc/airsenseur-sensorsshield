@@ -76,10 +76,7 @@ char SHT31::readData(unsigned short *temperature, unsigned short *humidity) cons
 
   // convert to unsigned short
   *temperature = ((unsigned short)data[0] << 8) | data[1];
-  //if (readbuffer[2] != crc8(readbuffer, 2)) return false;
-
   *humidity = ((unsigned short)data[3] << 8) | data[4];
-  //if (readbuffer[5] != crc8(readbuffer+3, 2)) return false;  
 
   return 1;
 }

@@ -132,12 +132,13 @@ char BMP280::getPressure(double &P) {
   var2 = var2 + (((int64_t)calibrationData.dig_P4)<<35);
   var1 = ((var1 * var1 * (int64_t)calibrationData.dig_P3)>>8) + ((var1 * (int64_t)calibrationData.dig_P2)<<12);
   var1 = (((((int64_t)1)<<47)+var1))*((int64_t)calibrationData.dig_P1)>>33;
-
   if (var1 == 0) {
     return 0;  // avoid exception caused by division by zero
   }
+  
   int64_t p = (int64_t)1048576 - (int64_t)adc_P;
   p = (((p<<31) - var2)*3125) / var1;
+
   var1 = (((int64_t)calibrationData.dig_P9) * (p>>13) * (p>>13)) >> 25;
   var2 = (((int64_t)calibrationData.dig_P8) * p) >> 19;
 
