@@ -29,7 +29,8 @@
 // Singleton SerialAHelper instance
 SerialAHelper SerialAHelper::instance;
 uint8_t SerialAHelper::txBuffer[SERIALABUFFERSIZE];
-uint8_t SerialAHelper::rxBuffer = '\000';
+uint8_t SerialAHelper::rxBuffer[] = { '\000', '\000' };
+volatile bool SerialAHelper::rxError = false;
 
 SerialAHelper::SerialAHelper() {
 }
@@ -38,11 +39,11 @@ SerialAHelper::~SerialAHelper() {
 }
 
 void SerialAHelper::init() const {
-	HAL_UART_Receive_DMA(&huart1, &rxBuffer, 1);
+	HAL_UART_Receive_DMA(&huart1, rxBuffer, 2);
 }
 
-void SerialAHelper::onDataRx() {
-	putByte(rxBuffer);
+void SerialAHelper::onDataRx(bool halfBuffer) {
+	putByte(rxBuffer[(halfBuffer)?0:1]);
 }
 
 unsigned short SerialAHelper::write(char* buffer) const {
@@ -59,6 +60,11 @@ unsigned short SerialAHelper::write(char* buffer) const {
 }
 
 bool SerialAHelper::available() const {
+	if (rxError) {
+		rxError = false;
+		HAL_UART_Receive_DMA(&huart1, rxBuffer, 2);
+	}
+
 	return dataReady();
 }
 
@@ -67,5 +73,5 @@ uint8_t SerialAHelper::read() {
 }
 
 void SerialAHelper::onErrorCallback() {
-	HAL_UART_Receive_DMA(&huart1, &rxBuffer, 1);
+	rxError = true;
 }

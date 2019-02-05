@@ -39,7 +39,7 @@ public:
 public:
 	static inline SerialHelper* getInstance() { return &instance; }
 	virtual void init() const;
-	virtual void onDataRx();
+	virtual void onDataRx(bool halfBuffer);
 	virtual uint16_t write(char* buffer) const;
 	virtual uint16_t write(char* buffer, uint16_t len) const;
 	virtual bool available() const;
@@ -50,6 +50,7 @@ private:
 	static SerialDHelper instance;
 	static uint8_t txBuffer[SERIALDBUFFERSIZE];
 	static uint8_t rxBuffer;
+	static volatile bool rxError;
 };
 
 #define SerialD (*(SerialDHelper::getInstance()))

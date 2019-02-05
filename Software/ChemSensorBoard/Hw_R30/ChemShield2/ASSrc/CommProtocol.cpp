@@ -180,6 +180,9 @@ void CommProtocol::processBuffer() {
     			SerialUSB.write((char*)buffer);
     		}
     			break;
+
+    		case SOURCE_NONE:
+    			break;
     }
     
     // Signal TX transmission

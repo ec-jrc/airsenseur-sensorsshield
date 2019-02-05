@@ -108,7 +108,7 @@ private:
 	bool samplingEnabled;
 	status curStatus;
 	OPCN3Comm opcComm;
-	unsigned char timer;
+	volatile unsigned char timer;
 };
 
 #endif /* OPCN3DEVICE_H_ */

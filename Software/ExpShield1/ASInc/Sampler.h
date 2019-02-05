@@ -63,7 +63,7 @@ protected:
     SensorDevice* getSensor();
     
 protected:
-    bool           go;                   // it's time for a new sample (shared info from interrupt)
+    volatile bool  go;                   // it's time for a new sample (shared info from interrupt)
     unsigned char  prescaler;            // basic samples are taken at sampleTick/prescaler
     unsigned char  timer;                // this is the prescaler counter
     

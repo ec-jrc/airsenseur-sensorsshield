@@ -31,6 +31,7 @@
 SerialCHelper SerialCHelper::instance;
 uint8_t SerialCHelper::txBuffer[SERIALCBUFFERSIZE];
 uint8_t SerialCHelper::rxBuffer = '\000';
+volatile bool SerialCHelper::rxError = false;
 
 SerialCHelper::SerialCHelper() {
 }
@@ -43,7 +44,7 @@ void SerialCHelper::init() const {
 	HAL_UART_Receive_IT(&huart3, &rxBuffer, 1);
 }
 
-void SerialCHelper::onDataRx() {
+void SerialCHelper::onDataRx(bool halfBuffer) {
 	putByte(rxBuffer);
 	HAL_UART_Receive_IT(&huart3, &rxBuffer, 1);
 }
@@ -65,6 +66,11 @@ uint16_t SerialCHelper::write(char* buffer, uint16_t len) const {
 }
 
 bool SerialCHelper::available() const {
+	if (rxError) {
+		rxError = false;
+		HAL_UART_Receive_IT(&huart3, &rxBuffer, 1);
+	}
+
 	return dataReady();
 }
 
@@ -73,6 +79,6 @@ uint8_t SerialCHelper::read() {
 }
 
 void SerialCHelper::onErrorCallback() {
-	HAL_UART_Receive_IT(&huart3, &rxBuffer, 1);
+	rxError = true;
 }
 

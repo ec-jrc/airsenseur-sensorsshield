@@ -50,9 +50,9 @@ public:
 
 private:
 	static LEDsHelper instance;
-	unsigned char ledTimers[DUMMYLAST];
-	bool ledsEnabled;
-	unsigned short ledsEnabledTimer;
+	volatile unsigned char ledTimers[DUMMYLAST];
+	volatile bool ledsEnabled;
+	volatile unsigned short ledsEnabledTimer;
 };
 
 #define LEDs (*(LEDsHelper::getInstance()))

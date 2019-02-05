@@ -49,7 +49,7 @@ protected:
 	void setSample(unsigned char channel, unsigned short sample);
 
 private:
-	bool sampleReady;
+	volatile bool sampleReady;
 	const unsigned char numChannels;
 	unsigned short *lastSamples;
 };

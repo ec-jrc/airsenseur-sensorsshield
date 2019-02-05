@@ -96,7 +96,7 @@ private:
 	typedef struct _smdata {
 		smstatus status;
 		cmdOffset currCmdOffset;
-		unsigned char timer;
+		volatile unsigned char timer;
 		unsigned char retry;
 		unsigned char currRxDataOffset;
 		unsigned char currTxDataOffset;

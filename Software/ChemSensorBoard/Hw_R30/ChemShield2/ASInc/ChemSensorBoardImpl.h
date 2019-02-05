@@ -29,8 +29,8 @@
  extern "C" {
 #endif
 
- 	void uart1Interrupt();
- 	void uart2Interrupt();
+ 	void uart1Interrupt(unsigned char halfBuffer);
+ 	void uart2Interrupt(unsigned char halfBuffer);
  	void uart1Error();
  	void uart2Error();
  	void usbRxCallback(unsigned char* buffer, long bufferLen);

@@ -25,7 +25,7 @@
 #ifndef COMMPROTOCOL_H
 #define	COMMPROTOCOL_H
 
-#define FIRMWARE_VERSON                 "FW1.0.0 P2.0"
+#define FIRMWARE_VERSON                 "FW1.0.1 P2.0"
 
 #define COMMPROTOCOL_HEADER             '{'
 #define COMMPROTOCOL_TRAILER            '}'
@@ -65,7 +65,8 @@ public:
 	typedef enum _source {
 		SOURCE_SERIAL,
 		SOURCE_SENSORBUS,
-		SOURCE_USB
+		SOURCE_USB,
+		SOURCE_NONE
 	} source;
 
 public:
@@ -131,7 +132,7 @@ private:
     rxstatus rxStatus;
     source lastSourceId;
     
-    unsigned short timer;
+    volatile unsigned short timer;
     
     SensorsArray* sensorsArray;                 // A reference to the array sensor
     SensorBusWrapper* sensorBus;	               // A reference to sesor bus wrapper

@@ -44,7 +44,7 @@ SerialUSBHelper::~SerialUSBHelper() {
 void SerialUSBHelper::init() const {
 }
 
-void SerialUSBHelper::onDataRx() {
+void SerialUSBHelper::onDataRx(bool halfBuffer) {
 }
 
 void SerialUSBHelper::onDataRx(unsigned char* buffer, long length) {

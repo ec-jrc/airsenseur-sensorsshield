@@ -39,7 +39,7 @@ private:
 public:
 	static inline SerialHelper* getInstance() { return &instance; }
 	virtual void init() const;
-	virtual void onDataRx();
+	virtual void onDataRx(bool halfBuffer);
 	virtual unsigned short write(char* buffer) const;
 	virtual bool available() const;
 	virtual uint8_t read();

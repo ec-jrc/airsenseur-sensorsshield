@@ -56,13 +56,13 @@ void timerInterrupt() {
     EEPROM.tick();
 }
 
-void uart1Interrupt() {
-	SerialA.onDataRx();
+void uart1Interrupt(unsigned char halfBuffer) {
+	SerialA.onDataRx(halfBuffer!=0);
 	LEDs.pulse(LEDsHelper::RXDATA);
 }
 
-void uart2Interrupt() {
-	SerialB.onDataRx();
+void uart2Interrupt(unsigned char halfBuffer) {
+	SerialB.onDataRx(halfBuffer!=0);
 	LEDs.pulse(LEDsHelper::RXDATA);
 }
 

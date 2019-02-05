@@ -36,7 +36,7 @@ public:
 
 public:
 	virtual void init() const = 0;
-	virtual void onDataRx() = 0;
+	virtual void onDataRx(bool halfBuffer) = 0;
 	virtual uint16_t write(char* buffer) const = 0;
 	virtual uint16_t write(char* buffer, uint16_t len) const = 0;
 	virtual bool available() const = 0;

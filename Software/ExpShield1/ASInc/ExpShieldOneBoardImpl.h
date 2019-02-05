@@ -29,10 +29,10 @@
  extern "C" {
 #endif
 
- 	void uart1Interrupt();
- 	void uart2Interrupt();
- 	void uart3Interrupt();
- 	void uart4Interrupt();
+ 	void uart1Interrupt(unsigned char halfBuffer);
+ 	void uart2Interrupt(unsigned char halfBuffer);
+ 	void uart3Interrupt(unsigned char halfBuffer);
+ 	void uart4Interrupt(unsigned char halfBuffer);
  	void uart1Error();
  	void uart2Error();
  	void uart3Error();
