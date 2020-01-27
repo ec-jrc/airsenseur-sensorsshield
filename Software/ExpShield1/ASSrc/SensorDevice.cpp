@@ -45,14 +45,6 @@ const unsigned char SensorDevice::getNumChannels() const {
 	return numChannels;
 }
 
-const char* SensorDevice::getChannelName(unsigned char channel) const {
-	return "";
-}
-
-bool SensorDevice::setChannelName(unsigned char channel, const char* name) {
-	return false;
-}
-
 void SensorDevice::triggerSample() {
 	sampleReady = false;
 }

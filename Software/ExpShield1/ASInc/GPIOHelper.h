@@ -50,7 +50,7 @@ public:
 private:
 	static const GPIOHelper instance;
 	static const uint16_t pinIDs[LAST_UNUSEDPIN];
-	static const GPIO_TypeDef* pinPorts[LAST_UNUSEDPIN];
+	static const GPIO_TypeDef* const pinPorts[LAST_UNUSEDPIN];
 };
 
 #define AS_GPIO GPIOHelper::getInstance()

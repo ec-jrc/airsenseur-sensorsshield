@@ -37,6 +37,8 @@
 #include "GPIOHelper.h"
 #include <string.h>
 
+#define BOARD_TYPE_EXP1_SENSORSHIELD		0x02
+
 #define GLOBAL_SAMPLE_PRESCALER_RATIO	99
 
 DitherTool SensorsArray::ditherTool = DitherTool();
@@ -106,9 +108,12 @@ SensorsArray::~SensorsArray() {
     }
 
     for (unsigned char n = 0; n < NUM_OF_TOTAL_SENSORS; n++) {
-    		if (sensors[n]) {
-    			delete sensors[n];
-    		}
+		if (sensors[n]) {
+			delete sensors[n];
+		}
+		if (averagers[n]) {
+			delete averagers[n];
+		}
     }
 }
 
@@ -117,7 +122,7 @@ bool SensorsArray::timerTick() {
     
     bool result = false;
 
-    // Propagate to all devices with fast rate (one sampletick = 0.01s)
+    // Propagate to all devices requiring fast rate (one sampletick = 0.01s)
     for (unsigned char n = 0; n < NUM_OF_TOTAL_SENSORS; n++) {
     		if (sensors[n] != 0) {
     			sensors[n]->tick();
@@ -139,7 +144,7 @@ bool SensorsArray::timerTick() {
     }
     
 
-    // Increase the internal timestamp
+    // Increase the internal timestamp (in 0.01s)
     timestamp++;
     
     return result;
@@ -175,7 +180,7 @@ bool SensorsArray::loop() {
 
 void SensorsArray::powerUp5V(bool enable) {
 	AS_GPIO.digitalWrite(EN_5V, true);
-	HAL_Delay(1000);
+	HAL_Delay(500);
 }
 
 void SensorsArray::powerUp3V3(bool enable) {
@@ -184,7 +189,7 @@ void SensorsArray::powerUp3V3(bool enable) {
 
 void SensorsArray::powerUp12V(bool enable) {
 	AS_GPIO.digitalWrite(EN_12V, true);
-	HAL_Delay(1000);
+	HAL_Delay(500);
 }
 
 unsigned char SensorsArray::setSamplePrescaler(unsigned char channel, unsigned char prescaler) {
@@ -212,7 +217,7 @@ unsigned char SensorsArray::setSamplePostscaler(unsigned char channel, unsigned 
     if (channel >= NUM_OF_TOTAL_CHANNELS)
         return 0;
     
-    return (averagers[chToSamplerSubChannel[channel].sampler]->init(postscaler) != 0);
+    return (averagers[chToSamplerSubChannel[channel].sampler]->init(postscaler) != 0) ;
 }
 
 bool SensorsArray::getSamplePostscaler(unsigned char channel, unsigned char* postscaler) {
@@ -315,15 +320,48 @@ bool SensorsArray::loadPreset(unsigned char channel) {
 }
 
 bool SensorsArray::getLastSample(unsigned char channel, unsigned short& lastSample, unsigned long& timestamp) {
-    
-    if (channel < NUM_OF_TOTAL_CHANNELS) {
-    		lastSample = averagers[chToSamplerSubChannel[channel].sampler]->lastAveragedValue(chToSamplerSubChannel[channel].subchannel);
-        timestamp = averagers[chToSamplerSubChannel[channel].sampler]->lastTimeStamp();
-        return true;
-    } 
-    
+
     lastSample = 0;
     timestamp = 0;
+    
+    if (channel < NUM_OF_TOTAL_CHANNELS) {
+    	unsigned char enabled = false;
+    	samplers[chToSamplerSubChannel[channel].sampler]->getChannelIsEnabled(chToSamplerSubChannel[channel].subchannel, &enabled);
+
+    	if (enabled != 0) {
+			lastSample = averagers[chToSamplerSubChannel[channel].sampler]->lastAveragedValue(chToSamplerSubChannel[channel].subchannel);
+			timestamp = averagers[chToSamplerSubChannel[channel].sampler]->lastTimeStamp();
+    	}
+		return true;
+    } 
+    
+    return false;
+}
+
+bool SensorsArray::getLastSample(unsigned char channel, float &lastSample, unsigned long &timestamp) {
+
+    lastSample = 0.0f;
+    timestamp = 0;
+
+    if (channel < NUM_OF_TOTAL_CHANNELS) {
+
+    	unsigned char enabled = false;
+    	samplers[chToSamplerSubChannel[channel].sampler]->getChannelIsEnabled(chToSamplerSubChannel[channel].subchannel, &enabled);
+
+    	if (enabled != 0) {
+			// Retrieve the timestamp
+			timestamp = averagers[chToSamplerSubChannel[channel].sampler]->lastTimeStamp();
+
+			// Retrieve the averaged value...
+			lastSample = averagers[chToSamplerSubChannel[channel].sampler]->lastAveragedValue(chToSamplerSubChannel[channel].subchannel);
+
+			// Evaluate it. Evaluation is done by sensor devices
+			lastSample = sensors[chToSamplerSubChannel[channel].sampler]->evaluateMeasurement(chToSamplerSubChannel[channel].subchannel, lastSample);
+    	}
+
+		return true;
+    }
+
     return false;
 }
 
@@ -334,8 +372,13 @@ bool SensorsArray::saveSensorSerialNumber(unsigned char channel, unsigned char* 
 		return false;
 	}
 
-	unsigned short address = SENSOR_SERIAL_NUMBER(channel);
-	return EEPROM.write(address, buffer, buffSize);
+	// Write the serial number only if the sensor does not support serial number natively
+	if (sensors[chToSamplerSubChannel[channel].sampler]->getSerial() == NULL) {
+		unsigned short address = SENSOR_SERIAL_NUMBER(chToSamplerSubChannel[channel].sampler);
+		return EEPROM.write(address, buffer, buffSize);
+	}
+
+	return true;
 }
 
 bool SensorsArray::readSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize) {
@@ -345,17 +388,25 @@ bool SensorsArray::readSensorSerialNumber(unsigned char channel, unsigned char* 
 		return false;
 	}
 
-    unsigned short address = SENSOR_SERIAL_NUMBER(channel);
-    unsigned char maxSize = (buffSize < SERIAL_NUMBER_MAXLENGTH)? buffSize : SERIAL_NUMBER_MAXLENGTH;
-    for (unsigned char n = 0; n < maxSize; n++) {
-        unsigned char ucRead = EEPROM.read(address);
-        if (ucRead == 0xFF) {
-            ucRead = 0;
-        }
-        buffer[n] = ucRead;
-        address++;
-    }
-    buffer[maxSize-1] = 0;
+	unsigned char maxSize = (buffSize < SERIAL_NUMBER_MAXLENGTH)? buffSize : SERIAL_NUMBER_MAXLENGTH;
+
+	// Read the serial number from local EEPROM only if the sensor does not support serial number natively
+	if (sensors[chToSamplerSubChannel[channel].sampler]->getSerial() == NULL) {
+		unsigned short address = SENSOR_SERIAL_NUMBER(chToSamplerSubChannel[channel].sampler);
+		for (unsigned char n = 0; n < maxSize; n++) {
+			unsigned char ucRead = EEPROM.read(address);
+			if (ucRead == 0xFF) {
+				ucRead = 0;
+			}
+			buffer[n] = ucRead;
+			address++;
+		}
+		buffer[maxSize-1] = 0;
+	} else {
+		const char* sensorSerial = sensors[chToSamplerSubChannel[channel].sampler]->getSerial();
+		strncpy((char*)buffer, sensorSerial, maxSize);
+		buffer[maxSize-1] = 0x00;
+	}
 
     return true;
 }
@@ -381,4 +432,62 @@ bool SensorsArray::readBoardSerialNumber(unsigned char* buffer, unsigned char bu
     buffer[maxSize-1] = 0;
 
     return true;
+}
+
+
+bool SensorsArray::readChannelSamplePeriod(unsigned char channel, unsigned long *samplePeriod) {
+
+	if ((channel >= NUM_OF_TOTAL_CHANNELS) || (samplePeriod == 0)) {
+		return false;
+	}
+
+    unsigned char samplerPrescaler = samplers[chToSamplerSubChannel[channel].sampler]->getPrescaler() + 1;
+    unsigned char samplerDecimation = samplers[chToSamplerSubChannel[channel].sampler]->getDecimation() + 1;
+    unsigned char averagerBufferSize = averagers[chToSamplerSubChannel[channel].sampler]->getBufferSize() + 1;
+
+	*samplePeriod = samplerPrescaler * samplerDecimation * averagerBufferSize * 1000;
+
+	return true;
+}
+
+bool SensorsArray::getUnitForChannel(unsigned char channel, unsigned char* buffer, unsigned char buffSize) {
+
+	if (channel >= NUM_OF_TOTAL_CHANNELS) {
+		return false;
+	}
+
+	// Units for each channel is known by sensor devices
+	const char* units = sensors[chToSamplerSubChannel[channel].sampler]->getMeasurementUnit(chToSamplerSubChannel[channel].subchannel);
+    strcpy((char*)buffer, units);
+
+	return true;
+}
+
+bool SensorsArray::setEnableChannel(unsigned char channel, unsigned char enabled) {
+
+	if (channel >= NUM_OF_TOTAL_CHANNELS) {
+		return false;
+	}
+
+	// Enabled status is known by it's sampler
+	return samplers[chToSamplerSubChannel[channel].sampler]->setEnableChannel(chToSamplerSubChannel[channel].subchannel, enabled);
+}
+
+bool SensorsArray::getChannelIsEnabled(unsigned char channel, unsigned char *enabled) {
+
+	if (channel >= NUM_OF_TOTAL_CHANNELS) {
+		return false;
+	}
+
+	// Enabled status is known by it's sampler
+	return samplers[chToSamplerSubChannel[channel].sampler]->getChannelIsEnabled(chToSamplerSubChannel[channel].subchannel, enabled);
+}
+
+
+unsigned short SensorsArray::getBoardType() {
+	return BOARD_TYPE_EXP1_SENSORSHIELD;
+}
+
+unsigned short SensorsArray::getBoardNumChannels() {
+	return NUM_OF_TOTAL_CHANNELS;
 }

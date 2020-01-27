@@ -85,12 +85,22 @@ extern "C" {
 // 00D8 - 00D8 -> Sampler averager buffer size channel D
 #define AVERAGER_PRESET_BUFSIZE(a)      (SAMPLER_PRESET_BASE(a) + 8)
 
-// 1000 - 100F -> Sensor 1 serial number
-// 1010 - 101F -> Sensor 2 serial number
-// 1020 - 102F -> Sensor 3 serial number
-// 1030 - 103F -> Sensor 4 serial number
+// 1000 - 100F -> Sensor 1 serial number (RD200)
+// 1010 - 101F -> Sensor 2 serial number (ELT300)
+// 1020 - 102F -> Sensor 3 serial number (PMS5003)
+// 1030 - 103F -> Sensor 4 serial number (OPC-N3)
 #define SERIAL_NUMBER_MAXLENGTH         0x10 /* See also in CommProtocol for MAX_SERIAL_BUFLENGTH */
 #define SENSOR_SERIAL_NUMBER(a)         (0x1000 + ((a) * SERIAL_NUMBER_MAXLENGTH))
+
+// 1100 - 1100 -> Channel 0 enabled, Sampler 0
+// 1101 - 1101 -> Channel 1 enabled, Sampler 0
+// 1102 - 1102 -> Channel2 enabled, Sampler 0
+//...
+// 1200 - 1200 -> Channel 0 enabled, Sampler 1
+// a: sampler
+// b: relative channel
+#define SAMPLER_CHANNEL_ENABLED_PRESET(a,b)	((0x1100 + (((unsigned short)(a))<<8)) + (b))
+
 
 // 7FF0 - Board serial number
 #define BOARD_SERIAL_NUMBER             0x7FF0

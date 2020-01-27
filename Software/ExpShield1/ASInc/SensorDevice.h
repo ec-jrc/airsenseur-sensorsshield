@@ -37,9 +37,13 @@ public:
 	virtual void loop() = 0;
 	virtual void tick() = 0;
 
+	virtual const char* getSerial() const = 0;
+
 	virtual const unsigned char getNumChannels() const;
-	virtual const char* getChannelName(unsigned char channel) const;
-	virtual bool setChannelName(unsigned char channel, const char* name);
+	virtual const char* getChannelName(unsigned char channel) const = 0;
+	virtual bool setChannelName(unsigned char channel, const char* name) = 0;
+	virtual const char* getMeasurementUnit(unsigned char channel) const = 0;
+	virtual float evaluateMeasurement(unsigned char channel, float value) const = 0;
 
 	virtual void triggerSample();
 	virtual bool sampleAvailable();

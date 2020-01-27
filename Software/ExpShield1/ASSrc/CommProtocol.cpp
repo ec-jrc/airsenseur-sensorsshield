@@ -37,6 +37,8 @@
 
 const CommProtocol::commandinfo CommProtocol::validCommands[] = {
 
+	{ COMMPROTOCOL_LASTSAMPLE, 1, &CommProtocol::lastSample },
+	{ COMMPROTOCOL_LASTSAMPLEHRES, 1, &CommProtocol::lastSampleHRes },
     { COMMPROTOCOL_SENSOR_INQUIRY, 1, &CommProtocol::sensorInquiry },
     { COMMPROTOCOL_ECHO, 0, &CommProtocol::echo },
     { COMMPROTOCOL_SAMPLE_ENABLE, 0, &CommProtocol::sampleEnable },
@@ -47,7 +49,6 @@ const CommProtocol::commandinfo CommProtocol::validCommands[] = {
     { COMMPROTOCOL_GET_SAMPLEPOSTS, 1, &CommProtocol::getSamplePostscaler },
     { COMMPROTOCOL_SET_SAMPLEDECIM, 2, &CommProtocol::setSampleDecimation },
     { COMMPROTOCOL_GET_SAMPLEDECIM, 1, &CommProtocol::getSampleDecimation },
-    { COMMPROTOCOL_LASTSAMPLE, 1, &CommProtocol::lastSample },
     { COMMPROTOCOL_FREEMEMORY, 0, &CommProtocol::getFreeMemory },
     { COMMPROTOCOL_LOADPRESET, 1, &CommProtocol::loadPreset },
     { COMMPROTOCOL_SAVEPRESET, MAX_INQUIRY_BUFLENGTH+1, &CommProtocol::savePreset },
@@ -55,7 +56,12 @@ const CommProtocol::commandinfo CommProtocol::validCommands[] = {
     { COMMPROTOCOL_READ_SSERIAL, 1, &CommProtocol::readSensorSerialNumber },
 	{ COMMPROTOCOL_WRITE_BOARDSERIAL, 2, &CommProtocol::writeBoardSerialNumber },
 	{ COMMPROTOCOL_READ_BOARDSERIAL, 1, &CommProtocol::readBoardSerialNumber },
-	{ COMMPROTOCOL_READ_FWVERSION, 1, &CommProtocol::readFirmwareVersion }
+	{ COMMPROTOCOL_READ_FWVERSION, 1, &CommProtocol::readFirmwareVersion },
+	{ COMMPROTOCOL_READ_SAMPLEPERIOD, 1, &CommProtocol::readSamplePeriod },
+	{ COMMPROTOCOL_READ_UNITS, 1, &CommProtocol::readUnits },
+	{ COMMPROTOCOL_READ_BOARDTYPE, 1, &CommProtocol::readBoardType },
+	{ COMMPROTOCOL_WRITE_CHANENABLE, 1, &CommProtocol::writeChannelEnable },
+	{ COMMPROTOCOL_READ_CHANENABLE, 1, &CommProtocol::readChannelEnable }
 };
 
 const char CommProtocol::commProtocolErrorString[] = { COMMPROTOCOL_ERROR };
@@ -227,6 +233,12 @@ void CommProtocol::writeValue(unsigned long value, bool last) {
     writeValue((unsigned char)(value&0xFF), last);
 }
 
+void CommProtocol::writeValue(float value, bool last) {
+
+    unsigned long iValue = *((unsigned long*)&value);
+    writeValue(iValue, last);
+}
+
 void CommProtocol::writeString(unsigned char* value, bool last) {
 
     unsigned char length = strlen((char*)value);
@@ -390,6 +402,26 @@ bool CommProtocol::lastSample(CommProtocol* context, unsigned char cmdOffset) {
     return true;
 }
 
+// Function handler: take the last sample in high resolution mode (float)
+bool CommProtocol::lastSampleHRes(CommProtocol* context, unsigned char cmdOffset) {
+
+	float lastSample = 0.0f;
+	unsigned long lastTimestamp = 0;
+	unsigned char channel = context->getParameter(0);
+    if (!context->sensorsArray->getLastSample(channel, lastSample, lastTimestamp)) {
+        return false;
+    }
+
+    context->buffer[0] = COMMPROTOCOL_HEADER;
+    context->buffer[1] = validCommands[cmdOffset].commandID;
+    context->buffer[2] = 0;
+    context->writeValue(channel, false);
+    context->writeValue(lastSample, false);
+    context->writeValue(lastTimestamp, true);
+
+    return true;
+}
+
 // Function handler: get the sensor name
 bool CommProtocol::sensorInquiry(CommProtocol* context, unsigned char cmdOffset) {
 
@@ -441,7 +473,7 @@ bool CommProtocol::savePreset(CommProtocol* context, unsigned char cmdOffset) {
     return false;
 }
 
-
+// Function handler: write the sensor serial number
 bool CommProtocol::writeSensorSerialNumber(CommProtocol* context, unsigned char cmdOffset) {
 
     unsigned char result[MAX_SERIAL_BUFLENGTH];
@@ -459,15 +491,20 @@ bool CommProtocol::writeSensorSerialNumber(CommProtocol* context, unsigned char 
     return false;
 }
 
+// Function handler: read the sensor serial number
 bool CommProtocol::readSensorSerialNumber(CommProtocol* context, unsigned char cmdOffset) {
 
 	unsigned char result[MAX_SERIAL_BUFLENGTH];
     unsigned char channel = context->getParameter(0);
 
-    context->sensorsArray->readSensorSerialNumber(channel, result, MAX_SERIAL_BUFLENGTH);
+    bool ok = context->sensorsArray->readSensorSerialNumber(channel, result, MAX_SERIAL_BUFLENGTH);
+    if (!ok) {
+    	return false;
+    }
 
+    // Override to NA if not set
     if (strlen((char*)result) == 0) {
-        return false;
+        strcpy((char*)result, "NA");
     }
 
     context->buffer[0] = COMMPROTOCOL_HEADER;
@@ -479,6 +516,7 @@ bool CommProtocol::readSensorSerialNumber(CommProtocol* context, unsigned char c
     return true;
 }
 
+// Function handler: write the board serial number
 bool CommProtocol::writeBoardSerialNumber(CommProtocol* context, unsigned char cmdOffset) {
 
     unsigned char result[MAX_SERIAL_BUFLENGTH];
@@ -495,6 +533,7 @@ bool CommProtocol::writeBoardSerialNumber(CommProtocol* context, unsigned char c
     return false;
 }
 
+// Function handler: read the board serial number
 bool CommProtocol::readBoardSerialNumber(CommProtocol* context, unsigned char cmdOffset) {
 
 	unsigned char result[MAX_SERIAL_BUFLENGTH];
@@ -513,7 +552,7 @@ bool CommProtocol::readBoardSerialNumber(CommProtocol* context, unsigned char cm
     return true;
 }
 
-
+// Function handler: read firmware version
 bool CommProtocol::readFirmwareVersion(CommProtocol* context, unsigned char cmdOffset) {
 
     context->buffer[0] = COMMPROTOCOL_HEADER;
@@ -523,3 +562,90 @@ bool CommProtocol::readFirmwareVersion(CommProtocol* context, unsigned char cmdO
 
 	return true;
 }
+
+// Function handler: read sample period for a specific channel
+bool CommProtocol::readSamplePeriod(CommProtocol* context, unsigned char cmdOffset) {
+
+	unsigned long samplePeriod;
+	unsigned char channel = context->getParameter(0);
+
+    if (!context->sensorsArray->readChannelSamplePeriod(channel, &samplePeriod)) {
+        return false;
+    }
+
+    context->buffer[0] = COMMPROTOCOL_HEADER;
+    context->buffer[1] = validCommands[cmdOffset].commandID;
+    context->buffer[2] = 0;
+    context->writeValue(channel, false);
+    context->writeValue(samplePeriod, true);
+
+    return true;
+
+}
+
+// Function handler: read units for a specific channel
+bool CommProtocol::readUnits(CommProtocol* context, unsigned char cmdOffset) {
+
+    unsigned char result[MAX_SERIAL_BUFLENGTH];
+    unsigned char channel = context->getParameter(0);
+
+    context->sensorsArray->getUnitForChannel(channel, result, MAX_SERIAL_BUFLENGTH);
+
+    if (strlen((char*)result) == 0) {
+        return false;
+    }
+
+    context->buffer[0] = COMMPROTOCOL_HEADER;
+    context->buffer[1] = validCommands[cmdOffset].commandID;
+    context->buffer[2] = 0;
+    context->writeValue(channel, false);
+    context->writeString(result, true);
+
+    return true;
+}
+
+// Function handler: read board type and number of supported channel
+bool CommProtocol::readBoardType(CommProtocol* context, unsigned char cmdOffset) {
+
+	unsigned short boardType = context->sensorsArray->getBoardType();
+	unsigned short channelNumber = context->sensorsArray->getBoardNumChannels();
+
+	context->buffer[0] = COMMPROTOCOL_HEADER;
+	context->buffer[1] = validCommands[cmdOffset].commandID;
+	context->buffer[2] = 0;
+	context->writeValue(boardType, false);
+	context->writeValue(channelNumber, true);
+
+	return true;
+}
+
+// Function handler: enable/disable a specified channel
+bool CommProtocol::writeChannelEnable(CommProtocol* context, unsigned char cmdOffset) {
+
+    unsigned char channel = context->getParameter(0);
+    unsigned char enabled = context->getParameter(1);
+
+    if (context->sensorsArray->setEnableChannel(channel, enabled)) {
+        return context->renderOKAnswer(cmdOffset, channel);
+    }
+    return false;
+}
+
+// Function handler: inquiry for enabled/disabled status for a specified channel
+bool CommProtocol::readChannelEnable(CommProtocol* context, unsigned char cmdOffset) {
+
+    unsigned char channel = context->getParameter(0);
+    unsigned char enabled;
+    if (!context->sensorsArray->getChannelIsEnabled(channel, &enabled)) {
+        return false;
+    }
+
+    context->buffer[0] = COMMPROTOCOL_HEADER;
+    context->buffer[1] = validCommands[cmdOffset].commandID;
+    context->buffer[2] = 0;
+    context->writeValue(channel, false);
+    context->writeValue(enabled, true);
+
+    return true;
+}
+

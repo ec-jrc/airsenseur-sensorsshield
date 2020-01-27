@@ -91,10 +91,25 @@ void D300Device::tick() {
 	}
 }
 
+const char* D300Device::getSerial() const  {
+	return NULL;
+}
+
+bool D300Device::setChannelName(unsigned char channel, const char* name) {
+	return false;
+}
+
 const char* D300Device::getChannelName(unsigned char channel) const {
 	return "D300";
 }
 
+const char* D300Device::getMeasurementUnit(unsigned char channel) const {
+	return "ppm";
+}
+
+float D300Device::evaluateMeasurement(unsigned char channel, float value) const {
+	return value;
+}
 
 void D300Device::triggerSample() {
 	SensorDevice::triggerSample();

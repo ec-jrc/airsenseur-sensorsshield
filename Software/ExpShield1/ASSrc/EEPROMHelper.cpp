@@ -79,7 +79,7 @@ void EEPROMHelper::mainLoop() {
 
 		// Start writing the new item
 		datapacket* curWriting = writingItem;
-		HAL_StatusTypeDef res = HAL_I2C_Mem_Write(&hi2c2, MEM24AA256_ADDRESS, curWriting->address, 0x02, curWriting->pData, curWriting->size, 500);
+		HAL_I2C_Mem_Write(&hi2c2, MEM24AA256_ADDRESS, curWriting->address, 0x02, curWriting->pData, curWriting->size, 500);
 
 		// Link to next item in the queue
 		writingItem = curWriting->nextItem;

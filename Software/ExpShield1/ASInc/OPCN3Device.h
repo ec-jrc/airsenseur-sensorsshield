@@ -68,6 +68,8 @@
 #define OPCN3_FRT	31
 #define OPCN3_LSRST	32
 
+#define OPCN3_SERIAL_NUMBER_MAXLENGTH	0x10
+
 class OPCN3Device : public SensorDevice {
 
 public:
@@ -80,19 +82,33 @@ public:
 	virtual void loop();
 	virtual void tick();
 
+	virtual const char* getSerial() const;
+
+	virtual bool setChannelName(unsigned char channel, const char* name);
 	virtual const char* getChannelName(unsigned char channel) const;
+	virtual const char* getMeasurementUnit(unsigned char channel) const;
+	virtual float evaluateMeasurement(unsigned char channel, float value) const;
 
 	virtual void triggerSample();
 
 private:
+	void resetStateMachineOnTimeout();
+
+	bool evaluateInfoString(OPCN3Comm::infostring* infostring);
+	bool evaluateSerialString(OPCN3Comm::serialstring* serialstring);
+	bool evaluateHistogram(OPCN3Comm::histogram* histogram);
+
+private:
 	typedef enum _status {
 		IDLE,
-		SET_FAN_ON,
-		WAIT_FAN_ON,
+		REQ_INFOSTRING,
+		WAIT_INFOSTRING,
+		REQ_SERIALSTRING,
+		WAIT_SERIALSTRING,
 		SET_LASER_ON,
 		WAIT_LASER_ON,
-		SET_LASER_SWITCH_ON,
-		WAIT_LASER_SWITCH_ON,
+		SET_FAN_ON,
+		WAIT_FAN_ON,
 		SAMPLING_READY,
 		SAMPLING_START,
 		SAMPLING_WAITING,
@@ -101,13 +117,17 @@ private:
 	} status;
 
 private:
-	static const char* channelNames[];
+	static const char* const channelNames[];
+	static const char* const channelMeasurementUnits[];
+	static double const evaluationFactors[];
 
 private:
 	bool lowPowerMode;
 	bool samplingEnabled;
 	status curStatus;
 	OPCN3Comm opcComm;
+	bool isOPCN2Unit;
+	char serialNumber[OPCN3_SERIAL_NUMBER_MAXLENGTH];
 	volatile unsigned char timer;
 };
 

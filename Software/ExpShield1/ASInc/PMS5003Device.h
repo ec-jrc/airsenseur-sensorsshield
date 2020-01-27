@@ -52,7 +52,11 @@ public:
 	virtual void setLowPowerMode(bool lowPower);
 	virtual void loop();
 	virtual void tick();
+	virtual const char* getSerial() const;
+	virtual bool setChannelName(unsigned char channel, const char* name);
 	virtual const char* getChannelName(unsigned char channel) const;
+	virtual const char* getMeasurementUnit(unsigned char channel) const;
+	virtual float evaluateMeasurement(unsigned char channel, float value) const;
 
 private:
 	typedef struct _datastruct {
@@ -79,7 +83,8 @@ private:
 	bool validFrame;
 
 private:
-	static const char* channelNames[];
+	static const char* const channelNames[];
+	static const char* const channelMeasurementUnits[];
 
 private:
 	void onDataReceived(unsigned char pivotChar);

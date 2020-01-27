@@ -104,8 +104,24 @@ void RD200MDevice::loop() {
 void RD200MDevice::tick() {
 }
 
+const char* RD200MDevice::getSerial() const {
+	return NULL;
+}
+
+bool RD200MDevice::setChannelName(unsigned char channel, const char* name) {
+	return false;
+}
+
 const char* RD200MDevice::getChannelName(unsigned char channel) const {
 	return "RD200M";
+}
+
+const char* RD200MDevice::getMeasurementUnit(unsigned char channel) const {
+	return "pCi/L";
+}
+
+float RD200MDevice::evaluateMeasurement(unsigned char channel, float value) const {
+	return value/100.0;
 }
 
 void RD200MDevice::triggerSample() {

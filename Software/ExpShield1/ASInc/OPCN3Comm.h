@@ -29,7 +29,9 @@
 
 #define OPCN3_BINS_NUMBER		24
 #define OPCN3_BINM2F_NUMBER		4
-#define OPCN3_PMS_NUMBER			3
+#define OPCN3_PMS_NUMBER		3
+#define OPCN3_INFOSTR_LENGTH	60
+#define OPCN3_SERIALSTR_LENGTH	60
 
 class OPCN3Comm {
 
@@ -42,6 +44,8 @@ public:
 		SET_LASER_SWITCH_OFF,
 		SET_LASER_SWITCH_ON,
 		READ_HISTOGRAM,
+		READ_INFOSTRING,
+		READ_SERIAL,
 		NONE,
 	} cmdOffset;
 
@@ -70,6 +74,14 @@ public:
 		unsigned short checksum;
 	} histogram;
 
+	typedef struct _infostring {
+		char infoString[OPCN3_INFOSTR_LENGTH];
+	} infostring;
+
+	typedef struct _serialstring {
+		char serialString[OPCN3_SERIALSTR_LENGTH];
+	} serialstring;
+
 
 public:
 	OPCN3Comm();
@@ -82,6 +94,8 @@ public:
 	virtual bool ready();
 
 	virtual histogram* getLastHistogram();
+	virtual infostring* getInfoString();
+	virtual serialstring* getSerialString();
 
 	float toPmValue(type32 *data);
 

@@ -29,9 +29,14 @@
 
 #define PSM5003_START_FRAME	0x424d
 
-const char* PMS5003Device::channelNames[] = {
+const char* const PMS5003Device::channelNames[] = {
 		"5301CST", "5325CST", "5310CST", "5301CAT", "5325CAT", "5310CAT",
 		"53PT003", "53PT005", "53PT010", "53PT025", "53PT050", "53PT100"
+};
+
+const char* const PMS5003Device::channelMeasurementUnits[] = {
+		"ug/m3", 		"ug/m3", 		"ug/m3", 		"ug/m3", 		"ug/m3", 		"ug/m3",
+		"counts/ml", 	"counts/ml", 	"counts/ml", 	"counts/ml", 	"counts/ml", 	"counts/ml"
 };
 
 PMS5003Device::PMS5003Device() : SensorDevice(PSM5003_NUM_CHANNELS),
@@ -86,13 +91,39 @@ void PMS5003Device::tick() {
 
 }
 
+const char* PMS5003Device::getSerial() const {
+	return NULL;
+}
+
+bool PMS5003Device::setChannelName(unsigned char channel, const char* name) {
+	return false;
+}
+
 const char* PMS5003Device::getChannelName(unsigned char channel) const {
 
-	if (channel < sizeof (channelNames) / sizeof (const char *)) {
+	if (channel < PSM5003_NUM_CHANNELS) {
 		return channelNames[channel];
 	}
 
 	return "";
+}
+
+const char* PMS5003Device::getMeasurementUnit(unsigned char channel) const {
+
+	if (channel < PSM5003_NUM_CHANNELS) {
+		return channelMeasurementUnits[channel];
+	}
+
+	return "";
+}
+
+float PMS5003Device::evaluateMeasurement(unsigned char channel, float value) const {
+
+	if (channel < PSM5003_NUM_CHANNELS/2) {
+		return value;
+	} else {
+		return value / 100.0;
+	}
 }
 
 void PMS5003Device::onDataReceived(unsigned char pivotChar) {

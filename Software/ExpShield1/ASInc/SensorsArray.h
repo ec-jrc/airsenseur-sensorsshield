@@ -36,6 +36,7 @@
 #define SENSOR_PMS5300		0x02
 #define SENSOR_OPCN3			0x03
 
+// Note: There is an averager and a sampler for each physical sensor
 #define NUM_OF_TOTAL_SENSORS		(SENSOR_OPCN3 + 1)
 #define NUM_OF_TOTAL_SAMPLERS	NUM_OF_TOTAL_SENSORS
 #define NUM_OF_TOTAL_AVERAGERS	NUM_OF_TOTAL_SENSORS
@@ -81,20 +82,29 @@ public:
     bool getSampleDecimation(unsigned char channel, unsigned char* decimation);
     bool setSampleIIRDenominators(unsigned char channel, unsigned char iirDen1, unsigned char iirDen2);
     bool getSampleIIRDenominators(unsigned char channel, unsigned char *iirDen1, unsigned char *iirDen2);
-    
+
     bool getLastSample(unsigned char channel, unsigned short &lastSample, unsigned long &timestamp);
-    
-    bool timerTick();
-    bool loop();
-    
-    bool enableSampling(bool enable);
+    bool getLastSample(unsigned char channel, float &lastSample, unsigned long &timestamp);
+
     void inquirySensor(unsigned char channel, unsigned char* buffer, unsigned char bufSize);
     bool savePreset(unsigned char channel, unsigned char *presetName, unsigned char bufSize);
     bool loadPreset(unsigned char channel);
     bool saveSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
     bool readSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
+    bool readChannelSamplePeriod(unsigned char channel, unsigned long *samplePeriod);
+    bool getUnitForChannel(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
+    bool setEnableChannel(unsigned char channel, unsigned char enabled);
+    bool getChannelIsEnabled(unsigned char channel, unsigned char *enabled);
+
+    bool enableSampling(bool enable);
+
     bool saveBoardSerialNumber(unsigned char* buffer, unsigned char buffSize);
     bool readBoardSerialNumber(unsigned char* buffer, unsigned char buffSize);
+    unsigned short getBoardType();
+    unsigned short getBoardNumChannels();
+
+    bool timerTick();
+    bool loop();
 
 private:
     typedef struct _channeltosamplersubchannel {
@@ -114,7 +124,7 @@ private:
     SamplesAverager* averagers[NUM_OF_TOTAL_AVERAGERS];      		// Average samples calculators
     
     bool samplingEnabled;                                   		// Sampling is default disabled
-    unsigned long timestamp;                                		// Internal timestamp timer
+    unsigned long timestamp;                                		// Internal timestamp timer (in 0.01s)
     unsigned char globalPrescaler;						   		// Global sampling prescaler
 
 private:

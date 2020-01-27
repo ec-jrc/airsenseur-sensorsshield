@@ -86,7 +86,13 @@ unsigned char SamplesAverager::init(unsigned char size) {
     		bufferSize = 0;
     }
     
-    return bufferSize;
+    // Return buffersize...
+    if (bufferSize) {
+    	return bufferSize;
+    }
+
+    // or at least 1 (when average is disabled)
+    return 1;
 }
 
 // The moving average is calculated each sample but is latched at each buffer 

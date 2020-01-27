@@ -39,7 +39,9 @@ const OPCN3Comm::cmdinfo OPCN3Comm::cmdInfoList[]  = {
 		{ W_PERIPH_POWER_STATUS, 0x00, 0x01, IDLE, 0x05 }, /* Set Laser Dig Pot On */
 		{ W_PERIPH_POWER_STATUS, 0x00, 0x01, IDLE, 0x06 }, /* Set Laser Switch Off */
 		{ W_PERIPH_POWER_STATUS, 0x00, 0x01, IDLE, 0x07 }, /* Set Laser Switch On */
-		{ R_HIST_DATA, sizeof(OPCN3Comm::histogram), 0x00, EVALUATE, 0x00 },		  /* Read histogram */
+		{ R_HIST_DATA, sizeof(OPCN3Comm::histogram), 0x00, EVALUATE, 0x00 },		  	/* Read histogram */
+		{ R_INFO_STRING, sizeof(OPCN3Comm::infostring), 0x00, EVALUATE, 0x00 },			/* Read info string */
+		{ R_SERIAL_NUMBER, sizeof(OPCN3Comm::serialstring), 0x00, EVALUATE, 0x00 },		/* Read serial string */
 };
 
 OPCN3Comm::OPCN3Comm() {
@@ -160,6 +162,32 @@ OPCN3Comm::histogram* OPCN3Comm::getLastHistogram() {
 		if (crc == recHistogram->checksum) {
 			return recHistogram;
 		}
+	}
+
+	return NULL;
+}
+
+OPCN3Comm::infostring* OPCN3Comm::getInfoString() {
+
+	if ((smData.status == EVALUATE) && (smData.currCmdOffset == READ_INFOSTRING)) {
+
+		infostring* recInfoString = (infostring*)smData.buffer;
+		resetStateMachine();
+
+		return recInfoString;
+	}
+
+	return NULL;
+}
+
+OPCN3Comm::serialstring* OPCN3Comm::getSerialString() {
+
+	if ((smData.status == EVALUATE) && (smData.currCmdOffset == READ_SERIAL)) {
+
+		serialstring* recSerialString = (serialstring*)smData.buffer;
+		resetStateMachine();
+
+		return recSerialString;
 	}
 
 	return NULL;

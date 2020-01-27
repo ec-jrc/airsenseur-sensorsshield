@@ -34,6 +34,8 @@ Sampler::Sampler(unsigned char channels, SensorDevice* _sensor)
 
 	lastSample = new unsigned short [channels];
 	memset(lastSample, 0, channels*sizeof(unsigned short));
+	enabled = new bool[channels];
+	memset(enabled, 0xff, channels*sizeof(bool));
 }
 
 const unsigned char Sampler::getNumChannels() const {
@@ -94,7 +96,15 @@ bool Sampler::loadPreset(unsigned char myID) {
     // Apply
     setPreScaler(prescVal);
     setDecimation(decimVal);
-    
+
+    // Load channel enable status
+    for (int channel = 0; channel < numChannels; channel++) {
+    	unsigned char read = EEPROM.read(SAMPLER_CHANNEL_ENABLED_PRESET(myID, channel));
+
+    	// Apply
+    	setEnableChannel(channel, read);
+    }
+
     return true;
 }
 
@@ -104,11 +114,17 @@ bool Sampler::savePreset(unsigned char myID) {
     EEPROM.write(SAMPLER_PRESET_PRESCALER(myID), getPrescaler());
     EEPROM.write(SAMPLER_PRESET_DECIMATION(myID), getDecimation());
     
+    // Save channel enable status
+    EEPROM.write(SAMPLER_CHANNEL_ENABLED_PRESET(myID, 0), (unsigned char*)enabled, numChannels);
+
     return true;
 }
 
 void Sampler::onStartSampling() {
-	sensor->onStartSampling();
+
+	if (atLeastOneChannelEnabled()) {
+		sensor->onStartSampling();
+	}
 }
 
 void Sampler::onStopSampling() {
@@ -120,11 +136,13 @@ bool Sampler::sampleTick() {
     if (timer == prescaler) {
 
         // It's time for a new sample
-    		sensor->triggerSample();
+    	if (atLeastOneChannelEnabled()) {
+			sensor->triggerSample();
 
-        timer = 0;
-        go = true;
-        return true;
+			timer = 0;
+			go = true;
+			return true;
+    	}
     }
     timer++;
 
@@ -151,6 +169,34 @@ bool Sampler::sampleLoop() {
 void Sampler::setLowPowerMode(bool lowPower) {
 }
 
+bool Sampler::setEnableChannel(unsigned char channel, unsigned char _enabled) {
+	if (channel >= numChannels)
+		return false;
+
+	enabled[channel] = (_enabled != 0);
+
+	return true;
+}
+
+bool Sampler::getChannelIsEnabled(unsigned char channel, unsigned char* _enabled) {
+	if (channel >= numChannels)
+		return false;
+
+	*_enabled = (enabled[channel])? 1:0;
+
+	return true;
+}
+
 SensorDevice* Sampler::getSensor() {
 	return sensor;
+}
+
+bool Sampler::atLeastOneChannelEnabled() {
+
+	bool result = false;
+	for (unsigned char channel = 0; (channel < numChannels) & !result; channel++) {
+		result |= enabled[channel];
+	}
+
+	return result;
 }

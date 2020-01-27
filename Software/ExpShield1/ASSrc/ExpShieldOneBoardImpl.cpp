@@ -119,6 +119,9 @@ void setup_impl() {
 
     // Initialize the tick timer
     HAL_TIM_Base_Start_IT(&htim17);
+
+    // Signal we're ready
+    LEDs.pulse(LEDsHelper::TXDATA);
 }
 
 void loop_impl() {

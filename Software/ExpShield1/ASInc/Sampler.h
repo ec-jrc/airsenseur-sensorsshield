@@ -55,6 +55,9 @@ public:
     
     virtual void setLowPowerMode(bool lowPower);
 
+	virtual bool setEnableChannel(unsigned char channel, unsigned char enabled);
+	virtual bool getChannelIsEnabled(unsigned char channel, unsigned char* enabled);
+
     virtual unsigned short getLastSample(unsigned char channel);
     
 protected:
@@ -62,6 +65,8 @@ protected:
     virtual void onReadSample(unsigned char channel, unsigned short newSample);
     SensorDevice* getSensor();
     
+    virtual bool atLeastOneChannelEnabled();
+
 protected:
     volatile bool  go;                   // it's time for a new sample (shared info from interrupt)
     unsigned char  prescaler;            // basic samples are taken at sampleTick/prescaler
@@ -70,8 +75,9 @@ protected:
     unsigned char  decimation;           // decimation filter length
     unsigned char  decimationTimer;      // this is the decimation counter
 
-    unsigned char  numChannels;			// Number of channels the sampler is valid to handle
+    unsigned char  numChannels;			 // Number of channels the sampler is valid to handle
     unsigned short *lastSample;          // last valid sample read buffers
+    bool *enabled;						 // channels enabled/disabled status
 
     SensorDevice *sensor;				// The sensor associated to this sampler
 };
