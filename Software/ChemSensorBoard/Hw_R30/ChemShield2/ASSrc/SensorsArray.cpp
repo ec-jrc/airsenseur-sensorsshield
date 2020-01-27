@@ -23,6 +23,8 @@
  */
 
 #include "SensorsArray.h"
+#include "LMP91000Eval.h"
+#include "AD5694REval.h"
 #include "Sampler.h"
 #include "ChemSensorSampler.h"
 #include "TempSensorSampler.h"
@@ -32,10 +34,12 @@
 #include "EEPROMHelper.h"
 #include <string.h>
 
-const LMP91000 SensorsArray::AFEList[NUM_OF_CHEM_SENSORS] = { LMP91000(AFE_1_ENPIN), LMP91000(AFE_2_ENPIN), LMP91000(AFE_3_ENPIN), LMP91000(AFE_4_ENPIN) };
+
+#define BOARD_TYPE_CHEMICALSENSORSHIELD		0x01
+
 const ADC16S626 SensorsArray::ADCList[NUM_OF_CHEM_SENSORS] = { ADC16S626(ADC_1_CSPIN), ADC16S626(ADC_2_CSPIN), ADC16S626(ADC_3_CSPIN), ADC16S626(ADC_4_CSPIN) };
-const AD5694R SensorsArray::DACList[NUM_OF_CHEM_SENSORS] = { AD5694R(DAC_1_GAINPIN, AD5694_SLAVE_1), AD5694R(DAC_2_GAINPIN, AD5694_SLAVE_2), AD5694R(DAC_3_GAINPIN, AD5694_SLAVE_3), AD5694R(DAC_4_GAINPIN, AD5694_SLAVE_4) };
-SHT31 SensorsArray::sht31 = SHT31();
+SHT31 SensorsArray::sht31i = SHT31(true);
+SHT31 SensorsArray::sht31e = SHT31(false);
 BMP280 SensorsArray::bmp280 = BMP280();
 DitherTool SensorsArray::ditherTool = DitherTool();
 
@@ -44,21 +48,38 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0) {
     // Initialize the internal coefficients for the pressure sensor
     bmp280.begin();
 
-    // Initialize the humidity sensor
-    sht31.begin();
+    // Initialize the humidity sensors
+    sht31i.begin();
+    sht31e.begin();
     
     // Initialize the samplers and averagers array (yes, I know, this could be skipped but it's done for safety reasons)
+    memset(AFEList, 0, sizeof(AFEList));
+    memset(DACList, 0, sizeof(DACList));
     memset(samplers, 0, sizeof(samplers));
     memset(averagers, 0, sizeof(averagers));
     
+    // Initialize the AFEList
+    AFEList[CHEMSENSOR_1] = new LMP91000Eval(AFE_1_ENPIN);
+    AFEList[CHEMSENSOR_2] = new LMP91000Eval(AFE_2_ENPIN);
+    AFEList[CHEMSENSOR_3] = new LMP91000Eval(AFE_3_ENPIN);
+    AFEList[CHEMSENSOR_4] = new LMP91000Eval(AFE_4_ENPIN);
+
+    // Initialize the DACList
+    DACList[CHEMSENSOR_1] = new AD5694REval(DAC_1_GAINPIN, AD5694_SLAVE_1);
+    DACList[CHEMSENSOR_2] = new AD5694REval(DAC_2_GAINPIN, AD5694_SLAVE_2);
+    DACList[CHEMSENSOR_3] = new AD5694REval(DAC_3_GAINPIN, AD5694_SLAVE_3);
+    DACList[CHEMSENSOR_4] = new AD5694REval(DAC_4_GAINPIN, AD5694_SLAVE_4);
+
     // Initialize the sampler units
     samplers[CHEMSENSOR_1] = new ChemSensorSampler(ADCList[CHEMSENSOR_1]);
     samplers[CHEMSENSOR_2] = new ChemSensorSampler(ADCList[CHEMSENSOR_2]);
     samplers[CHEMSENSOR_3] = new ChemSensorSampler(ADCList[CHEMSENSOR_3]);
     samplers[CHEMSENSOR_4] = new ChemSensorSampler(ADCList[CHEMSENSOR_4]);
-    samplers[TEMPSENSOR_1] = new TempSensorSampler(sht31);
-    samplers[HUMSENSOR_1] = new HumSensorSampler((TempSensorSampler*)samplers[TEMPSENSOR_1]);
     samplers[PRESSENSOR_1] = new PressSensorSampler(bmp280);
+    samplers[TEMPSENSOR_1] = new TempSensorSampler(sht31e);
+    samplers[HUMSENSOR_1] = new HumSensorSampler((TempSensorSampler*)samplers[TEMPSENSOR_1]);
+    samplers[TEMPSENSOR_2] = new TempSensorSampler(sht31i);
+    samplers[HUMSENSOR_2] = new HumSensorSampler((TempSensorSampler*)samplers[TEMPSENSOR_2]);
     
     // Set the dithering tool. Being a static variable, all object share it so 
     // is possible to initialize only one sampler object.
@@ -74,7 +95,7 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0) {
     
     // Initialize DACs
     for (unsigned char n = 0; n < NUM_OF_CHEM_SENSORS; n++) {
-        DACList[n].init();
+        DACList[n]->init();
     }
     
     // Initialize by reading the preset stored into the EEPROM
@@ -84,9 +105,21 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0) {
 }
 
 SensorsArray::~SensorsArray() {
+
+	for (unsigned char n = 0; n < NUM_OF_CHEM_SENSORS; n++) {
+		if (AFEList[n]) {
+			delete AFEList[n];
+		}
+		if (DACList[n]) {
+			delete DACList[n];
+		}
+	}
     for (unsigned char n = 0; n < NUM_OF_TOTAL_SENSORS; n++) {
         if (samplers[n]) {
             delete samplers[n];
+        }
+        if (averagers[n]) {
+        	delete averagers[n];
         }
     }
 }
@@ -129,6 +162,10 @@ bool SensorsArray::loop() {
     }
     
     return result;
+}
+
+bool SensorsArray::getIsFlyboardReady() {
+	return sht31e.isAvailable();
 }
 
 unsigned char SensorsArray::setSamplePrescaler(unsigned char channel, unsigned char prescaler) {
@@ -208,6 +245,20 @@ bool SensorsArray::setSampleIIRDenominators(unsigned char channel, unsigned char
 
 
 bool SensorsArray::enableSampling(bool enable) {
+
+	// Reset all samplers if sampling not already enabled
+	if (!samplingEnabled) {
+		for (unsigned char n = 0; n < NUM_OF_TOTAL_SENSORS; n++) {
+			if (samplers[n] != 0) {
+				samplers[n]->onStartSampling();
+			}
+			if (averagers[n] != 0) {
+				averagers[n]->onStartSampling();
+			}
+		}
+	}
+
+	// Enable sampling
     samplingEnabled = enable;
     
     return true;
@@ -220,23 +271,7 @@ void SensorsArray::inquirySensor(unsigned char channel, unsigned char* buffer, u
     if (channel >= NUM_OF_TOTAL_SENSORS)
         return;
     
-    if (channel <= CHEMSENSOR_4) {
-        AFEList[channel].getPresetName(buffer);
-    } else if (channel == PRESSENSOR_1) {
-        strcpy((char*)buffer, "BMP280");
-    } else if (channel == TEMPSENSOR_1) {
-		if (sht31.isInternalSensor()) {
-			strcpy((char*)buffer, "SHT31TI");
-		} else {
-			strcpy((char*)buffer, "SHT31TE");
-		}
-    } else if (channel == HUMSENSOR_1) {
-    		if (sht31.isInternalSensor()) {
-    			strcpy((char*)buffer, "SHT31HI");
-    		} else {
-    			strcpy((char*)buffer, "SHT31HE");
-    		}
-    }
+    samplers[channel]->getChannelName(channel, buffer, bufSize);
 }
 
 bool SensorsArray::writeAFERegisters(unsigned char channel, unsigned char tia, unsigned char ref, unsigned char mode) {
@@ -245,9 +280,9 @@ bool SensorsArray::writeAFERegisters(unsigned char channel, unsigned char tia, u
     if (channel > CHEMSENSOR_4)
         return false;
 
-    result &= AFEList[channel].unLock();
-    result &= AFEList[channel].writeRegisters(tia, ref, mode);
-    result &= AFEList[channel].lock();
+    result &= AFEList[channel]->unLock();
+    result &= AFEList[channel]->writeRegisters(tia, ref, mode);
+    result &= AFEList[channel]->lock();
     
     return result;
 }
@@ -259,7 +294,7 @@ bool SensorsArray::readAFERegisters(unsigned char channel, unsigned char* tia, u
     if (channel > CHEMSENSOR_4)
         return false;
 
-    result = AFEList[channel].readRegisters(tia, ref, mode);
+    result = AFEList[channel]->readRegisters(tia, ref, mode);
     
     return result;
 }
@@ -271,7 +306,7 @@ bool SensorsArray::writeDACRegisters(unsigned char channel, unsigned char subcha
     if (channel > CHEMSENSOR_4)
         return false;
 
-    result = DACList[channel].writeRegisters(subchannel, value, gain);
+    result = DACList[channel]->writeRegisters(subchannel, value, gain);
     
     return result;
 }
@@ -283,7 +318,7 @@ bool SensorsArray::readDACRegisters(unsigned char channel, unsigned char subchan
     if (channel > CHEMSENSOR_4)
         return false;
     
-    result = DACList[channel].readRegisters(subchannel, value, gain);
+    result = DACList[channel]->readRegisters(subchannel, value, gain);
 
     return result;
 }
@@ -296,10 +331,13 @@ bool SensorsArray::savePreset(unsigned char channel, unsigned char* presetName, 
     // Save preset for the AFE and DAC (only for chemical sensors)
     bool result = true;
     if (channel <= CHEMSENSOR_4) {
-        result &= DACList[channel].storePreset();
-        result &= AFEList[channel].storePreset(presetName);        
+        result &= DACList[channel]->storePreset();
+        result &= AFEList[channel]->storePreset();
     }
     
+    // Save channel name
+    result &= samplers[channel]->saveChannelName(channel, presetName);
+
     // Save sampler preset
     result &= samplers[channel]->savePreset(channel);
     
@@ -317,8 +355,8 @@ bool SensorsArray::loadPreset(unsigned char channel) {
     // Read AFE and DAC preset (only for chemical sensors)
     bool result = true;
     if (channel <= CHEMSENSOR_4) {
-        result &= DACList[channel].loadPreset();
-        result &= AFEList[channel].loadPreset();        
+        result &= DACList[channel]->loadPreset();
+        result &= AFEList[channel]->loadPreset();
     }
     
     // Read sampler preset
@@ -331,21 +369,76 @@ bool SensorsArray::loadPreset(unsigned char channel) {
 }
 
 bool SensorsArray::getLastSample(unsigned char channel, unsigned short& lastSample, unsigned long& timestamp) {
-    
-    if ((channel < NUM_OF_TOTAL_SENSORS) && (averagers[channel])) {
-        lastSample = averagers[channel]->lastAveragedValue();
-        
-        // Only for chemical sensors, convert back to two complement binary format
-        if (channel <= CHEMSENSOR_4) {
-            lastSample = twoComplement(lastSample);
-        }
-        
-        timestamp = averagers[channel]->lastTimeStamp();
-        return true;
-    } 
-    
+
     lastSample = 0;
     timestamp = 0;
+
+    if ((channel < NUM_OF_TOTAL_SENSORS) && (averagers[channel])) {
+
+    	unsigned char enabled = false;
+    	samplers[channel]->getChannelIsEnabled(&enabled);
+
+    	if (enabled != 0) {
+			lastSample = averagers[channel]->lastAveragedValue();
+			timestamp = averagers[channel]->lastTimeStamp();
+    	}
+
+		// Only for chemical sensors, convert back to two complement binary format
+		if (channel <= CHEMSENSOR_4) {
+			lastSample = twoComplement(lastSample);
+		}
+
+		return true;
+
+    } 
+    
+    return false;
+}
+
+bool SensorsArray::getLastSample(unsigned char channel, float &lastSample, unsigned long &timestamp) {
+
+    lastSample = 0.0f;
+    timestamp = 0;
+
+    if ((channel < NUM_OF_TOTAL_SENSORS) && (averagers[channel])) {
+
+    	unsigned char enabled = false;
+    	samplers[channel]->getChannelIsEnabled(&enabled);
+
+    	if (enabled != 0) {
+
+			// Only for chemical sensors, convert to nA
+			if (channel <= CHEMSENSOR_4) {
+
+				lastSample = averagers[channel]->lastAveragedValue();
+
+				double vRefm = DACList[channel]->getChannelVoltage(CHANNEL_DAC_REFM);
+				double vRefAD = DACList[channel]->getChannelVoltage(CHANNEL_DAC_REFAD);
+				bool afeRifInternal = AFEList[channel]->getIntSource();
+				double vRefAFE = (afeRifInternal)? 5.0 : DACList[channel]->getChannelVoltage(CHANNEL_DAC_REFAFE);
+				double intZeroVoltage = vRefAFE*(((double)AFEList[channel]->getIntZero())/100.0);
+				double absSampleVoltage = ADCList[channel].getVoltage(lastSample, vRefm, vRefAD);
+				unsigned char load = AFEList[channel]->getLoad();
+				double gain = AFEList[channel]->getGain();
+
+				// Get sample Voltage relative to the AFE internal zero
+				double sampleVoltage = absSampleVoltage - intZeroVoltage;
+
+				// Convert to current
+				double sampleCurrent = (sampleVoltage / (load*gain));
+
+				// Take nA to be sent over the wire
+				lastSample = (float) sampleCurrent * 1e9;
+			} else {
+
+				lastSample = (float) samplers[channel]->evaluateMeasurement(averagers[channel]->lastAveragedValue());
+			}
+
+			timestamp = averagers[channel]->lastTimeStamp();
+    	}
+		return true;
+    }
+
     return false;
 }
 
@@ -356,16 +449,24 @@ bool SensorsArray::saveSensorSerialNumber(unsigned char channel, unsigned char* 
 		return false;
 	}
 
+	// Safety check of incoming data
+	unsigned char maxSize = (buffSize < SERIAL_NUMBER_MAXLENGTH)? buffSize : SERIAL_NUMBER_MAXLENGTH;
+	buffer[SERIAL_NUMBER_MAXLENGTH-1] = 0;
+
 	unsigned short address = SENSOR_SERIAL_NUMBER(channel);
-	return EEPROM.write(address, buffer, buffSize);
+	return EEPROM.write(address, buffer, maxSize);
 }
 
 bool SensorsArray::readSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize) {
 
-	// Serial is available only for chemical sensors
 	*buffer = 0x00;
-	if (channel > CHEMSENSOR_4) {
+	if (channel >= NUM_OF_TOTAL_SENSORS) {
 		return false;
+	}
+
+	// Serial is available only for chemical sensors
+	if (channel > CHEMSENSOR_4) {
+		return true;
 	}
 
     unsigned short address = SENSOR_SERIAL_NUMBER(channel);
@@ -385,8 +486,12 @@ bool SensorsArray::readSensorSerialNumber(unsigned char channel, unsigned char* 
 
 bool SensorsArray::saveBoardSerialNumber(unsigned char* buffer, unsigned char buffSize) {
 
+	// Safety check of incoming data
+	unsigned char maxSize = (buffSize < SERIAL_NUMBER_MAXLENGTH)? buffSize : SERIAL_NUMBER_MAXLENGTH;
+	buffer[SERIAL_NUMBER_MAXLENGTH-1] = 0;
+
 	unsigned short address = BOARD_SERIAL_NUMBER;
-	return EEPROM.write(address, buffer, buffSize);
+	return EEPROM.write(address, buffer, maxSize);
 }
 
 bool SensorsArray::readBoardSerialNumber(unsigned char* buffer, unsigned char buffSize) {
@@ -406,16 +511,70 @@ bool SensorsArray::readBoardSerialNumber(unsigned char* buffer, unsigned char bu
     return true;
 }
 
+bool SensorsArray::readChannelSamplePeriod(unsigned char channel, unsigned long *samplePeriod) {
+
+    if ((channel >= NUM_OF_TOTAL_SENSORS) || (samplers[channel] == 0) || (averagers[channel] == 0))
+        return false;
+
+    if (samplePeriod == 0) {
+    	return false;
+    }
+
+	*samplePeriod = (averagers[channel]->getBufferSize() + 1) *
+					(samplers[channel]->getDecimation() + 1) *
+					(samplers[channel]->getPrescaler() + 1) * 10;
+
+	return true;
+}
+
+bool SensorsArray::getUnitForChannel(unsigned char channel, unsigned char* buffer, unsigned char buffSize) {
+
+    if ((channel >= NUM_OF_TOTAL_SENSORS) || (samplers[channel] == 0))
+        return false;
+
+    strcpy((char*)buffer, samplers[channel]->getMeasurementUnit());
+
+	return true;
+}
+
+bool SensorsArray::setEnableChannel(unsigned char channel, unsigned char enabled) {
+
+	if (channel >= NUM_OF_TOTAL_SENSORS) {
+		return false;
+	}
+
+	// Enabled status is known by it's sampler
+	return samplers[channel]->setEnableChannel(enabled);
+}
+
+bool SensorsArray::getChannelIsEnabled(unsigned char channel, unsigned char *enabled) {
+
+	if (channel >= NUM_OF_TOTAL_SENSORS) {
+		return false;
+	}
+
+	// Enabled status is known by it's sampler
+	return samplers[channel]->getChannelIsEnabled(enabled);
+}
+
+
+unsigned short SensorsArray::getBoardType() {
+	return BOARD_TYPE_CHEMICALSENSORSHIELD;
+}
+
+unsigned short SensorsArray::getBoardNumChannels() {
+	return NUM_OF_TOTAL_SENSORS;
+}
 
 unsigned short SensorsArray::twoComplement(unsigned short sample) {
-    
+
     // in       ->      out
     // 0        ->      32768
     // 32767    ->      65535
     // 32768    ->      0
     // 65535    ->      32767
-    
-    // 2 complement conversion 
+
+    // 2 complement conversion
     if (sample > 32767) {
             sample = sample - 32768;
     } else {
@@ -423,3 +582,4 @@ unsigned short SensorsArray::twoComplement(unsigned short sample) {
     }
     return sample;
 }
+

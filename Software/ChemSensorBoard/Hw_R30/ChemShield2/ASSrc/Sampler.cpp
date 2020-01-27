@@ -36,6 +36,7 @@ Sampler::Sampler() {
     go = false; 
     prescaler = 0;
     timer = 0;
+    enabled = true;
     decimation = 0; 
     decimationTimer = 0;
     blankTimer = DEFAULT_BLANK_TIMER_PERIOD;
@@ -43,6 +44,16 @@ Sampler::Sampler() {
     lastSample = 0;
     iIRDenum[0] = 0;
     iIRDenum[1] = 0;
+    iIRAccumulator[0] = 0;
+    iIRAccumulator[1] = 0;
+}
+
+void Sampler::onStartSampling() {
+	timer = 0;
+	decimationTimer = 0;
+	blankTimer = DEFAULT_BLANK_TIMER_PERIOD;
+    workSample = 0;
+    lastSample = 0;
     iIRAccumulator[0] = 0;
     iIRAccumulator[1] = 0;
 }
@@ -141,28 +152,78 @@ void Sampler::onReadSample(unsigned short newSample) {
 
 bool Sampler::loadPreset(unsigned char myID) {
 
-    // Load prescaler and decimation
+    // Load channel persisted parameters
     unsigned char prescVal = EEPROM.read(SAMPLER_PRESET_PRESCALER(myID));
     unsigned char decimVal = EEPROM.read(SAMPLER_PRESET_DECIMATION(myID));
     unsigned char iir1Denom = EEPROM.read(SAMPLER_PRESET_IIR1DENOM(myID));
     unsigned char iiR2Denom = EEPROM.read(SAMPLER_PRESET_IIR2DENOM(myID));
+    unsigned char enabled = EEPROM.read(SAMPLER_PRESET_CHENABLED(myID));
 
     // Apply
     setPreScaler(prescVal);
     setDecimation(decimVal);
     setIIRDenom(0, iir1Denom);
     setIIRDenom(1, iiR2Denom);
+    setEnableChannel(enabled);
     
     return true;
 }
 
 bool Sampler::savePreset(unsigned char myID) {
 
-    // Get values and store them
+    // Store channel configuration values into EEPROM
     EEPROM.write(SAMPLER_PRESET_PRESCALER(myID), getPrescaler());
     EEPROM.write(SAMPLER_PRESET_DECIMATION(myID), getDecimation());
     EEPROM.write(SAMPLER_PRESET_IIR1DENOM(myID), getIIRDenom(0));
     EEPROM.write(SAMPLER_PRESET_IIR2DENOM(myID), getIIRDenom(1));
+    EEPROM.write(SAMPLER_PRESET_CHENABLED(myID), (enabled)?1:0);
     
     return true;
+}
+
+bool Sampler::saveChannelName(unsigned char myID, unsigned char* name) {
+
+	// Always mark the end of the buffer with 0 to prevent overflow when reading
+	name[SENSOR_NAME_LENGTH-1] = 0;
+
+    // Store the preset name
+    unsigned short address = SENSOR_NAME(myID);
+    EEPROM.write(address, name, SENSOR_NAME_LENGTH);
+
+    return true;
+}
+
+bool Sampler::getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const {
+
+    unsigned short address = SENSOR_NAME(myID);
+    unsigned char maxSize = (buffSize < SENSOR_NAME_LENGTH)? buffSize : SENSOR_NAME_LENGTH;
+    for (unsigned char n = 0; n < maxSize; n++) {
+        unsigned char ucRead = EEPROM.read(address);
+        if (ucRead == 0xFF) {
+            ucRead = 0;
+        }
+        buffer[n] = ucRead;
+        address++;
+        if (ucRead == 0) {
+        	break;
+        }
+    }
+
+    // Always mark the end of the buffer to prevent overflow
+    buffer[maxSize] = 0;
+
+    return true;
+}
+
+bool Sampler::setEnableChannel(unsigned char _enabled) {
+	enabled = (_enabled != 0x00);
+
+	return true;
+}
+
+bool Sampler::getChannelIsEnabled(unsigned char* _enabled) {
+
+	*_enabled = (enabled)? 1:0;
+
+	return true;
 }

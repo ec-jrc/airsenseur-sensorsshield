@@ -37,7 +37,9 @@ TempSensorSampler::~TempSensorSampler() {
 
 void TempSensorSampler::setPreScaler(unsigned char value) {
     
-    if (value < 10) {
+	// Null perscaler value is used to disable this channel
+	// Prescaler less than 10 are not useful with this type of sensor
+    if ((value < 10) && (value != 0)){
         value = 10;
     }
     
@@ -79,16 +81,20 @@ bool TempSensorSampler::sampleLoop() {
         // Take the new sample
         unsigned short temperatureSample = 0;
         sensor.getSamples(&temperatureSample, &lastHumiditySample);
-        onReadSample(temperatureSample);
+
         go = false;
         humiditySampleReady = true;
-        
-        // Filter with two cascade single pole IIRs
-        applyIIRFilter(IIR1);
-        applyIIRFilter(IIR2);
-        
-        // Apply the decimation filter
-        return applyDecimationFilter();
+
+        if (enabled) {
+        	onReadSample(temperatureSample);
+
+			// Filter with two cascade single pole IIRs
+			applyIIRFilter(IIR1);
+			applyIIRFilter(IIR2);
+
+			// Apply the decimation filter
+			return applyDecimationFilter();
+        }
     }
     
     return false;
@@ -103,3 +109,24 @@ bool TempSensorSampler::getHumiditySampleReady() {
     humiditySampleReady = false;
     return result;
 }
+
+bool TempSensorSampler::getHumidityChannelName(unsigned char* name) {
+	return sensor.getHumidityChannelName(name);
+}
+
+bool TempSensorSampler::saveChannelName(unsigned char myID, unsigned char* name) {
+	return true;
+}
+
+bool TempSensorSampler::getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const {
+	return sensor.getTemperatureChannelName(buffer);
+}
+
+const char* TempSensorSampler::getMeasurementUnit() const {
+	return "C ";
+}
+
+double TempSensorSampler::evaluateMeasurement(unsigned short lastSample) const {
+	return ((((double)lastSample)/65535)*175)-45.0;
+}
+

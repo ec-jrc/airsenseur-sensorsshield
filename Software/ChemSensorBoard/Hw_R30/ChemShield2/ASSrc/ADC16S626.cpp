@@ -47,6 +47,13 @@ unsigned short ADC16S626::getSample() const {
     return result;
 }
 
+double ADC16S626::getVoltage(unsigned short linearSample, double vRefm, double vRefAD) const {
+
+	double result = vRefAD * (((double)linearSample)/32768.0 - 1.0) + vRefm;
+
+	return result;
+}
+
 unsigned short ADC16S626::toLinear(unsigned short twoComplSample) const {
 
     // 2 complement conversion     

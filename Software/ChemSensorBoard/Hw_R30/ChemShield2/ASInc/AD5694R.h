@@ -50,20 +50,20 @@ class AD5694R {
         AD5694R(const unsigned char gainPin, const unsigned char address);
         virtual ~AD5694R();
         
-        bool init() const;
+        bool init();
 
-        bool setGain(bool doubleGain) const;
-        bool setValue(unsigned char channelId, unsigned short value) const;
+        virtual bool setGain(bool doubleGain);
+        bool setValue(unsigned char channelId, unsigned short value);
         
-        bool writeRegisters(unsigned char channelId, unsigned short value, bool gain) const;
-        bool readRegisters(unsigned char channelId, unsigned short* value, bool* gain) const;
+        bool writeRegisters(unsigned char channelId, unsigned short value, bool gain);
+        bool readRegisters(unsigned char channelId, unsigned short* value, bool* gain);
         
-        bool storePreset() const;
-        bool loadPreset() const;
+        bool storePreset();
+        bool loadPreset();
 
-    private:
-        bool writeRegister(unsigned char address, unsigned char msb, unsigned char lsb) const;
-        bool readRegister(unsigned char address, unsigned char* msb, unsigned char* lsb) const;
+    protected:
+        virtual bool writeRegister(unsigned char address, unsigned char msb, unsigned char lsb);
+        virtual bool readRegister(unsigned char address, unsigned char* msb, unsigned char* lsb);
 
     private:
         const unsigned char m_gainPin;

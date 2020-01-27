@@ -13,46 +13,46 @@
  *
  * Date: 02/04/2015
  * Authors:
- * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
- *   Laurent Spinelle, laurent.spinelle@jrc.ec.europa.eu and 
+ * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu,
+ *   Laurent Spinelle, laurent.spinelle@jrc.ec.europa.eu and
  *   Alexander Kotsev, alexander.kotsev@jrc.ec.europa.eu:
- *      European Commission - Joint Research Centre, 
+ *			European Commission - Joint Research Centre,
  * - Marco Signorini, marco.signorini@liberaintentio.com
  *
  * ===========================================================================
  */
 
-#ifndef _SHT31_H_
-#define _SHT31_H_
+#ifndef LMP91000EVAL_H_
+#define LMP91000EVAL_H_
 
-class SHT31 {
+#include "LMP91000.h"
 
-  private:
-    SHT31();
-  public:
-    SHT31(bool internal);
-    virtual ~SHT31();
+class LMP91000Eval : public LMP91000 {
+public:
+	LMP91000Eval(const unsigned char menbPin);
+	virtual ~LMP91000Eval();
 
-    // Initialize the sensor and reads
-    bool begin();
-    
-    bool startConvertion() const;
-    bool getSamples(unsigned short *temperature, unsigned short *humidity) const;
+private:
+	static const unsigned char loadTable[];
+	static const double gainTable[];
+	static const unsigned char intZeroTable[];
 
-    bool isAvailable() const;
+private:
+	unsigned char load;
+	unsigned char gain;
+	unsigned char intZero;
+	bool intSource;
 
-    bool getTemperatureChannelName(unsigned char* buffer) const;
-    bool getHumidityChannelName(unsigned char* buffer) const;
-      
-  private:
-    char sendCommand(unsigned short command) const;
-    char readData(unsigned short *temperature, unsigned short *humidity) const;
+public:
+	unsigned char getLoad() const;
+	double getGain() const;
+	unsigned char getIntZero() const;
+	bool getIntSource() const;
 
-  private:
-    char sensorAddress;
-    bool available;
+protected:
+    virtual bool writeRegister(unsigned char address, unsigned char value);
+    virtual bool readRegister(unsigned char address, unsigned char* value);
+
 };
 
-#endif /* _SHT31_H_ */
-
-
+#endif /* LMP91000EVAL_H_ */

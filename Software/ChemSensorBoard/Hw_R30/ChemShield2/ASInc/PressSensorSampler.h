@@ -39,6 +39,12 @@ public:
     virtual bool sampleTick();
     virtual bool sampleLoop();
 
+    virtual bool saveChannelName(unsigned char myID, unsigned char* name);
+    virtual bool getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const;
+
+    virtual const char* getMeasurementUnit() const;
+    virtual double evaluateMeasurement(unsigned short lastSample) const;
+
 private:
     BMP280     &sensor;                 // the reference to the sensor
 };

@@ -24,9 +24,10 @@
 
 #include "SHT31.h"
 #include "I2CBHelper.h"
+#include <string.h>
 
 #define SHT31ONBOARDADDRESS             (0x44<<1)
-#define SHT32OFFBOARDADDRESS			   (0x45<<1)
+#define SHT32OFFBOARDADDRESS			(0x45<<1)
 #define SHT31_CMD_START_HIGHREP         0x2400
 #define SHT31_CMD_START_MEDREP          0x240B
 #define SHT31_CMD_START_LOWREP          0x2416
@@ -34,7 +35,12 @@
 #define SHT31_CMD_READ_STATUS           0xF32D
 #define SHT31_CMD_CLEAR_STATUS          0x3041
 
-SHT31::SHT31() : sensorAddress(SHT32OFFBOARDADDRESS) {
+SHT31::SHT31() : sensorAddress(SHT32OFFBOARDADDRESS), available(false) {
+}
+
+SHT31::SHT31(bool internal) {
+	sensorAddress = internal? SHT31ONBOARDADDRESS: SHT32OFFBOARDADDRESS;
+	available = false;
 }
 
 SHT31::~SHT31() {
@@ -42,32 +48,35 @@ SHT31::~SHT31() {
 
 bool SHT31::begin() {
 
-	char offBoardSensorFound = 0;
 	unsigned char checkNumber = 0;
 
-	while ((checkNumber < 10) && (offBoardSensorFound == 0)) {
-		offBoardSensorFound = sendCommand(SHT31_CMD_CLEAR_STATUS);
+	available = false;
+	while ((checkNumber < 10) && !available) {
+		available |= (sendCommand(SHT31_CMD_CLEAR_STATUS) != 0);
 		checkNumber++;
 	}
 
-	if (offBoardSensorFound == 0) {
-		sensorAddress = SHT31ONBOARDADDRESS;
-		return sendCommand(SHT31_CMD_CLEAR_STATUS);
-	}
-
-	return 1;
+	return available;
 }
 
 bool SHT31::startConvertion() const {
+  if (!available) {
+	  return false;
+  }
+
   return sendCommand(SHT31_CMD_START_LOWREP);
 }
 
 bool SHT31::getSamples(unsigned short *temperature, unsigned short *humidity) const {
+  if (!available) {
+	  return false;
+  }
+
   return readData(temperature, humidity);
 }
 
-bool SHT31::isInternalSensor() const {
-	return (sensorAddress == SHT31ONBOARDADDRESS);
+bool SHT31::isAvailable() const {
+	return available;
 }
 
 char SHT31::sendCommand(unsigned short command) const {
@@ -77,6 +86,37 @@ char SHT31::sendCommand(unsigned short command) const {
 
   return (result)?1:0;
 }
+
+bool SHT31::getTemperatureChannelName(unsigned char* buffer) const {
+
+	if (!buffer) {
+		return false;
+	}
+
+	if (sensorAddress == SHT31ONBOARDADDRESS) {
+		strcpy((char*)buffer, "SHT31TI");
+	} else {
+		strcpy((char*)buffer, "SHT31TE");
+	}
+
+	return true;
+}
+
+bool SHT31::getHumidityChannelName(unsigned char* buffer) const {
+
+	if (!buffer) {
+		return false;
+	}
+
+	if (sensorAddress == SHT31ONBOARDADDRESS) {
+		strcpy((char*)buffer, "SHT31HI");
+	} else {
+		strcpy((char*)buffer, "SHT31HE");
+	}
+
+	return true;
+}
+
 
 char SHT31::readData(unsigned short *temperature, unsigned short *humidity) const {
 

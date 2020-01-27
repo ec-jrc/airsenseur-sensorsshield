@@ -37,7 +37,7 @@ bool HumSensorSampler::sampleTick() {
 }
 
 bool HumSensorSampler::sampleLoop() {
-    if (tempSampler && tempSampler->getHumiditySampleReady()) {
+    if (enabled && tempSampler && tempSampler->getHumiditySampleReady()) {
         
         onReadSample(tempSampler->getLastHumiditySample());
             
@@ -55,4 +55,25 @@ bool HumSensorSampler::sampleLoop() {
 // We don't have a specific prescaler because we share the prescaler value
 // with the Temperature sensor
 void HumSensorSampler::setPreScaler(unsigned char value) {
+}
+
+unsigned char HumSensorSampler::getPrescaler() {
+	return tempSampler->getPrescaler();
+}
+
+bool HumSensorSampler::saveChannelName(unsigned char myID, unsigned char* name) {
+	return true;
+}
+
+bool HumSensorSampler::getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const {
+
+	return tempSampler->getHumidityChannelName(buffer);
+}
+
+const char* HumSensorSampler::getMeasurementUnit() const {
+	return "% RH";
+}
+
+double HumSensorSampler::evaluateMeasurement(unsigned short lastSample) const {
+	return (((double)lastSample)/65535)*100.0;
 }

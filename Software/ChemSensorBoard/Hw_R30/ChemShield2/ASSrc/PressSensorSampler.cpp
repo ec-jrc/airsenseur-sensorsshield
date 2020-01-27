@@ -23,6 +23,7 @@
  */
 
 #include "PressSensorSampler.h"
+#include <string.h>
 
 PressSensorSampler::PressSensorSampler(BMP280& press) : sensor(press) {
 }
@@ -34,7 +35,8 @@ void PressSensorSampler::setPreScaler(unsigned char value) {
 
     // We expect a maximum rate of 26.32Hz when the BMP280
     // operates in normal mode, 16x oversampling
-    if (value < 4) {
+	// Null perscaler value is used to disable this channel
+    if ((value < 4) && (prescaler != 0)) {
         value = 4;
     }
     
@@ -59,7 +61,7 @@ bool PressSensorSampler::sampleTick() {
 bool PressSensorSampler::sampleLoop() {
 
     // Take the new sample
-    if (go) {
+    if (enabled && go) {
       double temperature = 0;
       double pressure = 0;
   
@@ -78,4 +80,24 @@ bool PressSensorSampler::sampleLoop() {
     }
     
     return false;
+}
+
+bool PressSensorSampler::saveChannelName(unsigned char myID, unsigned char* name) {
+
+	return true;
+}
+
+bool PressSensorSampler::getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const {
+
+	strcpy((char*)buffer, "BMP280");
+
+	return true;
+}
+
+const char* PressSensorSampler::getMeasurementUnit() const {
+	return "hPa";
+}
+
+double PressSensorSampler::evaluateMeasurement(unsigned short lastSample) const {
+	return ((double)lastSample)/48.0;
 }

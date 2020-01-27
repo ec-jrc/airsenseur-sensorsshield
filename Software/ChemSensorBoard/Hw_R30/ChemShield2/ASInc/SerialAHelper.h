@@ -27,7 +27,7 @@
 
 #include "SerialHelper.h"
 
-#define SERIALABUFFERSIZE	48
+#define SERIALABUFFERSIZE	96
 
 class SerialAHelper : public SerialHelper {
 private:

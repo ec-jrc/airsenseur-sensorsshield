@@ -39,7 +39,14 @@ public:
     
     unsigned short getLastHumiditySample();
     bool getHumiditySampleReady();
+    bool getHumidityChannelName(unsigned char* name);
     
+    virtual bool saveChannelName(unsigned char myID, unsigned char* name);
+    virtual bool getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const;
+
+    virtual const char* getMeasurementUnit() const;
+    virtual double evaluateMeasurement(unsigned short lastSample) const;
+
 private:
     unsigned char startMeasureTime;     // we need to start sampling before reading
     bool startConversion;

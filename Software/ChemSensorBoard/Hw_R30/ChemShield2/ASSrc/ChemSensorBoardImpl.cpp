@@ -98,6 +98,11 @@ void setup_impl() {
     sensorBusProtocol->init(AS_GPIO.getBoardId());
     commProtocol->setSensorBusWrapper(sensorBusProtocol);
 
+    // Signal we detected the external temperature/humidity flyboard
+    if (sensorBoard->getIsFlyboardReady()) {
+    	LEDs.pulse(LEDsHelper::HEARTBEAT);
+    }
+
     // Initialize the tick timer
     HAL_TIM_Base_Start_IT(&htim17);
 }

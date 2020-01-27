@@ -69,29 +69,32 @@ extern "C" {
 #define LMP9100_REF(a)      (LMP9100_BASE(a) + 1)
 #define LMP9100_MODE(a)     (LMP9100_BASE(a) + 2)
     
-// 10 - 17 -> Preset name 1    
-// 20 - 27 -> Preset name 2
-// 30 - 37 -> Preset name 3
-// 40 - 47 -> Preset name 4
-#define LMP9100_PRESETNAME(a)       (((a) - AFE_1_ENPIN + 1) << 4)
-#define LMP9100_PRESETNAME_LENGTH   8
+// 10 - 17 -> Preset name 1 (no more used)
+// 20 - 27 -> Preset name 2 (no more used)
+// 30 - 37 -> Preset name 3 (no more used)
+// 40 - 47 -> Preset name 4 (no more used)
+//#define LMP9100_PRESETNAME(a)       (((a) - AFE_1_ENPIN + 1) << 4)
+//#define LMP9100_PRESETNAME_LENGTH   8
     
-// 60 - 61 -> Sampler preset 1
-// 70 - 71 -> Sampler preset 2
-// 80 - 81 -> Sampler preset 3
-// 90 - 91 -> Sampler preset 4
-// A0 - A1 -> Sampler preset 5
-// B0 - B1 -> Sampler preset 6
-// C0 - C1 -> Sampler preset 7
+// 60 - 64 -> Sampler preset 1
+// 70 - 74 -> Sampler preset 2
+// 80 - 84 -> Sampler preset 3
+// 90 - 94 -> Sampler preset 4
+// A0 - A4 -> Sampler preset 5
+// B0 - B4 -> Sampler preset 6
+// C0 - C4 -> Sampler preset 7
+// D0 - D4 -> Sampler preset 8
+// E0 - E4 -> Sampler preset 9
 #define SAMPLER_PRESET_BASE(a)     ((((a) + 1) << 4) + 0x50)
     
 #define SAMPLER_PRESET_PRESCALER(a)     SAMPLER_PRESET_BASE(a)
 #define SAMPLER_PRESET_DECIMATION(a)    (SAMPLER_PRESET_BASE(a) + 1)
 #define SAMPLER_PRESET_IIR1DENOM(a)     (SAMPLER_PRESET_BASE(a) + 2)
 #define SAMPLER_PRESET_IIR2DENOM(a)     (SAMPLER_PRESET_BASE(a) + 3)
+#define SAMPLER_PRESET_CHENABLED(a)		(SAMPLER_PRESET_BASE(a) + 4)
     
-// D0 - D7 -> Averager presets 
-#define AVERAGER_PRESET_BUFSIZE(a)      (0xD0 + (a))
+// F0 - D9 -> Averager presets
+#define AVERAGER_PRESET_BUFSIZE(a)      (0xF0 + (a))
 
 // 100 - 10A -> AD5694 preset 1
 // 110 - 11A -> AD5694 preset 2    
@@ -115,6 +118,13 @@ extern "C" {
 #define SERIAL_NUMBER_MAXLENGTH         0x10 /* See also in CommProtocol for MAX_SERIAL_BUFLENGTH */
 #define SENSOR_SERIAL_NUMBER(a)         (0x1000 + ((a) * SERIAL_NUMBER_MAXLENGTH))
 
+// 1100 - 111A -> Channel name 1
+// 1120 - 113A -> Channel name 2
+// 1140 - 115A -> Channel name 3
+// 1160 - 117A -> Channel name 4
+#define SENSOR_NAME_LENGTH   			0x1A /* See also in CommProtocol for MAX_SERIAL_BUFLENGTH */
+#define SENSOR_NAME_LENGTH_PAD			0x20
+#define SENSOR_NAME(a)       			(0x1100 + ((a) * SENSOR_NAME_LENGTH_PAD))
 
 
 // 7FF0 - Board serial number

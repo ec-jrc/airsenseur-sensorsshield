@@ -38,6 +38,9 @@ public:
     virtual bool sampleTick();
     virtual bool sampleLoop();
     
+    virtual const char* getMeasurementUnit() const;
+    virtual double evaluateMeasurement(unsigned short lastSample) const;
+
 private:
     const ADC16S626 &sensor;            // the reference to the sensor's ADC
 };

@@ -31,7 +31,7 @@ ChemSensorSampler::~ChemSensorSampler() {
 }
 
 bool ChemSensorSampler::sampleTick() {
-    
+
     if (timer == prescaler) {
         
         // It's time for a new sample
@@ -46,8 +46,8 @@ bool ChemSensorSampler::sampleTick() {
 
 bool ChemSensorSampler::sampleLoop() {
 
-    // Take the new sample
-    if (go) {
+    // Take the new sample if channel is enabled
+    if (enabled && go) {
         onReadSample(sensor.getSample());
         go = false;
         
@@ -60,4 +60,12 @@ bool ChemSensorSampler::sampleLoop() {
     }
     
     return false;
+}
+
+const char* ChemSensorSampler::getMeasurementUnit() const {
+	return "nA";
+}
+
+double ChemSensorSampler::evaluateMeasurement(unsigned short lastSample) const {
+	return 0.0;
 }

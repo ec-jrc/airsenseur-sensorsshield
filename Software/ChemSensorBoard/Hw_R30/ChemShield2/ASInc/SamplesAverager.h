@@ -33,6 +33,7 @@ public:
     virtual ~SamplesAverager();
     
     unsigned char init(unsigned char size);
+    void onStartSampling();
     bool collectSample(unsigned short sample, unsigned long _timestamp);
     unsigned char getBufferSize();
     

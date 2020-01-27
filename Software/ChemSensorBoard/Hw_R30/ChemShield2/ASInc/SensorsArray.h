@@ -26,33 +26,37 @@
 #ifndef SENSORSARRAY_H
 #define	SENSORSARRAY_H
 
-#include "LMP91000.h"
 #include "ADC16S626.h"
-#include "AD5694R.h"
 #include "SHT31.h"
 #include "BMP280.h"
 #include "DitherTool.h"
 #include "SamplesAverager.h"
 
 #define NUM_OF_CHEM_SENSORS     4
-#define NUM_OF_UR100_SENSORS    1
-#define NUM_OF_BMP180_SENSORS   1
 
+// Physical channels available on the board
 #define CHEMSENSOR_1            0x00
 #define CHEMSENSOR_2            0x01
 #define CHEMSENSOR_3            0x02
 #define CHEMSENSOR_4            0x03
 #define PRESSENSOR_1            0x04
-#define TEMPSENSOR_1            0x05
-#define HUMSENSOR_1             0x06
+#define TEMPSENSOR_1            0x05		// Sensor on flyboard
+#define HUMSENSOR_1             0x06		// Sensor on flyboard
+#define TEMPSENSOR_2			0x07		// Onboard sensor
+#define HUMSENSOR_2				0x08		// Onboard sensor
 
-#define NUM_OF_TOTAL_SENSORS    (HUMSENSOR_1 + 1)
-
-#define BMP280SENSOR_1          0x00
-#define SHT31SENSOR_1           0x00
+#define NUM_OF_TOTAL_SENSORS    (HUMSENSOR_2 + 1)
 
 #define DEFAULT_AVERAGE_SAMPLENUM       60
 
+// DAC channels used for reference synthesis
+#define CHANNEL_DAC_REFM		0x00
+#define CHANNEL_DAC_REFAD		0x01
+#define CHANNEL_DAC_REFAFE		0x02
+
+
+class LMP91000Eval;
+class AD5694REval;
 class Sampler;
 
 class SensorsArray {
@@ -70,34 +74,47 @@ public:
     bool getSampleIIRDenominators(unsigned char channel, unsigned char *iirDen1, unsigned char *iirDen2);
     
     bool getLastSample(unsigned char channel, unsigned short &lastSample, unsigned long &timestamp);
+    bool getLastSample(unsigned char channel, float &lastSample, unsigned long &timestamp);
     
-    bool timerTick();
-    bool loop();
-    
-    bool enableSampling(bool enable);
     void inquirySensor(unsigned char channel, unsigned char* buffer, unsigned char bufSize);
+    bool savePreset(unsigned char channel, unsigned char *presetName, unsigned char bufSize);
+    bool loadPreset(unsigned char channel);
     bool writeAFERegisters(unsigned char channel, unsigned char tia, unsigned char ref, unsigned char mode);
     bool readAFERegisters(unsigned char channel, unsigned char *tia, unsigned char *ref, unsigned char *mode);
     bool writeDACRegisters(unsigned char channel, unsigned char subchannel, unsigned short value, bool gain);
     bool readDACRegisters(unsigned char channel, unsigned char subchannel, unsigned short* value, bool *gain);
-    bool savePreset(unsigned char channel, unsigned char *presetName, unsigned char bufSize);
-    bool loadPreset(unsigned char channel);
     bool saveSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
     bool readSensorSerialNumber(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
+    bool readChannelSamplePeriod(unsigned char channel, unsigned long *samplePeriod);
+    bool getUnitForChannel(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
+    bool setEnableChannel(unsigned char channel, unsigned char enabled);
+    bool getChannelIsEnabled(unsigned char channel, unsigned char *enabled);
+
+    bool enableSampling(bool enable);
+
     bool saveBoardSerialNumber(unsigned char* buffer, unsigned char buffSize);
     bool readBoardSerialNumber(unsigned char* buffer, unsigned char buffSize);
-    
+    unsigned short getBoardType();
+    unsigned short getBoardNumChannels();
+
+    bool getIsFlyboardReady();
+
+    bool timerTick();
+    bool loop();
+
 private:
     unsigned short twoComplement(unsigned short sample);
-    
+
 private:
-    static const LMP91000 AFEList[NUM_OF_CHEM_SENSORS];     // The analog frontend for chemical sensors
     static const ADC16S626 ADCList[NUM_OF_CHEM_SENSORS];    // The ADC devices for chemical sensors
-    static const AD5694R DACList[NUM_OF_CHEM_SENSORS];      // The DAC devices for chemical sensors
-    static SHT31 sht31;                                     // Temperature and humidity sensor
+
+    static SHT31 sht31i;                                    // Onboard Temperature and humidity sensor
+    static SHT31 sht31e;                                    // Flyboard Temperature and humidity sensor
     static BMP280 bmp280;                                   // Pressure sensor
     static DitherTool ditherTool;                           // Dithering toolset
     
+    LMP91000Eval* AFEList[NUM_OF_CHEM_SENSORS];     		// The analog frontend for chemical sensors
+    AD5694REval* DACList[NUM_OF_CHEM_SENSORS];      		// The DAC devices for chemical sensors
     Sampler* samplers[NUM_OF_TOTAL_SENSORS];                // Sampler units for all sensors
     SamplesAverager* averagers[NUM_OF_TOTAL_SENSORS];       // Average samples calculators
     

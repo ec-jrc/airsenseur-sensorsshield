@@ -43,14 +43,14 @@ AD5694R::~AD5694R() {
     
 }
 
-bool AD5694R::setGain(bool doubleGain) const {
+bool AD5694R::setGain(bool doubleGain) {
 
 	AS_GPIO.digitalWrite(m_gainPin, (doubleGain == true)? AD5694_VAL_GAINDOUBLE:AD5694_VAL_GAINNOR);
     
     return true;
 }
 
-bool AD5694R::setValue(unsigned char channelId, unsigned short value) const {
+bool AD5694R::setValue(unsigned char channelId, unsigned short value) {
     
     unsigned char lsb = ((value & 0x0F) << 4);
     unsigned char msb = (value >> 4) & 0xFF;
@@ -58,7 +58,7 @@ bool AD5694R::setValue(unsigned char channelId, unsigned short value) const {
     return writeRegister(AD5694_CMD_WANDUPD|channelId, msb, lsb);
 }
 
-bool AD5694R::init() const {
+bool AD5694R::init() {
 
     // Turn On DAC A, B, C; 
     // DAC D is tied to ground with 1kohm
@@ -66,7 +66,7 @@ bool AD5694R::init() const {
     return writeRegister(AD5694_CMD_PWRUD, 0, data);
 }
 
-bool AD5694R::writeRegisters(unsigned char channelId, unsigned short value, bool gain) const {
+bool AD5694R::writeRegisters(unsigned char channelId, unsigned short value, bool gain) {
     
     bool result = true;
 
@@ -78,7 +78,7 @@ bool AD5694R::writeRegisters(unsigned char channelId, unsigned short value, bool
     return result;
 }
 
-bool AD5694R::readRegisters(unsigned char channelId, unsigned short* value, bool* gain) const {
+bool AD5694R::readRegisters(unsigned char channelId, unsigned short* value, bool* gain) {
 
     unsigned char msb;
     unsigned char lsb;
@@ -94,7 +94,7 @@ bool AD5694R::readRegisters(unsigned char channelId, unsigned short* value, bool
     return result;
 }
 
-bool AD5694R::writeRegister(unsigned char address, unsigned char msb, unsigned char lsb) const {
+bool AD5694R::writeRegister(unsigned char address, unsigned char msb, unsigned char lsb) {
 
     bool result;
 
@@ -104,7 +104,7 @@ bool AD5694R::writeRegister(unsigned char address, unsigned char msb, unsigned c
     return result;
 }
 
-bool AD5694R::readRegister(unsigned char address, unsigned char* msb, unsigned char* lsb) const {
+bool AD5694R::readRegister(unsigned char address, unsigned char* msb, unsigned char* lsb) {
 
     bool result = false;
 
@@ -116,7 +116,7 @@ bool AD5694R::readRegister(unsigned char address, unsigned char* msb, unsigned c
     return result;
 }
 
-bool AD5694R::storePreset() const {
+bool AD5694R::storePreset() {
     
     unsigned char lsb;
     unsigned char msb;
@@ -148,7 +148,7 @@ bool AD5694R::storePreset() const {
     return result;
 }
 
-bool AD5694R::loadPreset() const {
+bool AD5694R::loadPreset() {
     
     unsigned char msb;
     unsigned char lsb;

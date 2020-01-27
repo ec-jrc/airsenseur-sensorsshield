@@ -31,13 +31,6 @@
 /* I2C device address */
 #define LMP91000_ADDRESS                0x90
 
-/* Register definitions */
-#define LMP91000_REG_STATUS             0x00
-#define LMP91000_REG_LOCK               0x01
-#define LMP91000_REG_TIACN              0x10
-#define LMP91000_REG_REFCN              0x11
-#define LMP91000_REG_MODECN             0x12
-
 #define STATUS_UNLOCK                   0x00
 #define STATUS_LOCK                     0x01
 
@@ -49,27 +42,27 @@ LMP91000::~LMP91000() {
 };
 
 
-bool LMP91000::lock() const {
+bool LMP91000::lock() {
     return writeRegister(LMP91000_REG_LOCK, STATUS_LOCK);
 }
 
-bool LMP91000::unLock() const {
+bool LMP91000::unLock() {
     return writeRegister(LMP91000_REG_LOCK, STATUS_UNLOCK);
 }
 
-bool LMP91000::setGainAndLoad(unsigned char gain, unsigned char load) const {
+bool LMP91000::setGainAndLoad(unsigned char gain, unsigned char load) {
     return writeRegister(LMP91000_REG_TIACN, gain | load);
 }
 
-bool LMP91000::setReferenceZeroAndBias(unsigned char refSource, unsigned char intZero, unsigned char biasSign, unsigned char bias) const {
+bool LMP91000::setReferenceZeroAndBias(unsigned char refSource, unsigned char intZero, unsigned char biasSign, unsigned char bias) {
     return writeRegister(LMP91000_REG_REFCN, refSource | intZero | biasSign | bias);
 }
 
-bool LMP91000::setModeControl(unsigned char fetShort, unsigned char opMode) const {
+bool LMP91000::setModeControl(unsigned char fetShort, unsigned char opMode) {
     return writeRegister(LMP91000_REG_MODECN, fetShort | opMode);
 }
 
-bool LMP91000::writeRegisters(unsigned char tia, unsigned char ref, unsigned char mode) const {
+bool LMP91000::writeRegisters(unsigned char tia, unsigned char ref, unsigned char mode) {
     bool result = true;
     
     result &= writeRegister(LMP91000_REG_TIACN, tia);
@@ -79,7 +72,7 @@ bool LMP91000::writeRegisters(unsigned char tia, unsigned char ref, unsigned cha
     return result;
 }
 
-bool LMP91000::readRegisters(unsigned char* tia, unsigned char* ref, unsigned char* mode) const {
+bool LMP91000::readRegisters(unsigned char* tia, unsigned char* ref, unsigned char* mode) {
 
     bool result = true;
     
@@ -90,7 +83,7 @@ bool LMP91000::readRegisters(unsigned char* tia, unsigned char* ref, unsigned ch
     return result;
 }
 
-bool LMP91000::writeRegister(unsigned char address, unsigned char value) const {
+bool LMP91000::writeRegister(unsigned char address, unsigned char value) {
 
     bool result;
 
@@ -101,7 +94,7 @@ bool LMP91000::writeRegister(unsigned char address, unsigned char value) const {
     return result;
 }
 
-bool LMP91000::readRegister(unsigned char address, unsigned char* value) const {
+bool LMP91000::readRegister(unsigned char address, unsigned char* value) {
     
     bool result = false;
 
@@ -112,15 +105,7 @@ bool LMP91000::readRegister(unsigned char address, unsigned char* value) const {
     return result;
 }
 
-bool LMP91000::storePreset(unsigned char* name) const {
-    
-    // Store the preset name
-    unsigned short address = LMP9100_PRESETNAME(m_menbPin);
-    EEPROM.write(address, name, LMP9100_PRESETNAME_LENGTH);
-    
-    address = LMP9100_PRESETNAME(m_menbPin) + (LMP9100_PRESETNAME_LENGTH - 1);
-
-    EEPROM.write(address, 0);
+bool LMP91000::storePreset() {
     
     // Store the registers
     unsigned char value;
@@ -136,7 +121,7 @@ bool LMP91000::storePreset(unsigned char* name) const {
     return result;
 }
 
-bool LMP91000::loadPreset() const {
+bool LMP91000::loadPreset() {
     
     unsigned char ucRead;
     bool result = true;
@@ -155,16 +140,3 @@ bool LMP91000::loadPreset() const {
     return result;
 }
 
-void LMP91000::getPresetName(unsigned char* name) const {
-
-    unsigned short address = LMP9100_PRESETNAME(m_menbPin);
-    for (unsigned char n = 0; n < LMP9100_PRESETNAME_LENGTH; n++) {
-        unsigned char ucRead = EEPROM.read(address);
-        if (ucRead == 0xFF) {
-            ucRead = 0;
-        }
-        name[n] = ucRead;
-        address++;
-    }
-    name[7] = 0;
-}

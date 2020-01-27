@@ -32,6 +32,8 @@ public:
     
     unsigned short getSample() const;
     
+    double getVoltage(unsigned short linearSample, double vRefm, double vRefAD) const;
+
 private:
     unsigned short toLinear(unsigned short twoComplSample) const;
     

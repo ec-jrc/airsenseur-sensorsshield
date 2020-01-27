@@ -39,6 +39,8 @@ public:
     Sampler();
     virtual ~Sampler() { };
     
+    virtual void onStartSampling();
+
     virtual void setPreScaler(unsigned char value);
     virtual unsigned char getPrescaler();
     
@@ -57,7 +59,16 @@ public:
     virtual bool sampleLoop() = 0;
     
     virtual unsigned short getLastSample();
-    
+
+    virtual bool saveChannelName(unsigned char myID, unsigned char* name);
+	virtual bool getChannelName(unsigned char myID, unsigned char* buffer, unsigned char buffSize) const;
+
+    virtual const char* getMeasurementUnit() const = 0;
+    virtual double evaluateMeasurement(unsigned short lastSample) const = 0;
+
+	virtual bool setEnableChannel(unsigned char enabled);
+	virtual bool getChannelIsEnabled(unsigned char* enabled);
+
 protected:
     virtual bool applyDecimationFilter();
     virtual void applyIIRFilter(unsigned char iiRID);
@@ -67,6 +78,7 @@ protected:
     volatile bool  go;                   // it's time for a new sample (shared info from interrupt)
     unsigned char  prescaler;            // basic samples are taken at sampleTick/prescaler
     unsigned char  timer;                // this is the prescaler counter
+    bool		   enabled;				 // channel enabled status
     
     unsigned char  decimation;           // decimation filter length
     unsigned char  decimationTimer;      // this is the decimation counter

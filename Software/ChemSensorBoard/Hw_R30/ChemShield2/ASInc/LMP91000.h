@@ -79,29 +79,35 @@
 #define MODE_TEMPERATURE_TIAOFF 0x04
 #define MODE_TEMPERATURE_TIAON  0x05
 
+/* Register definitions */
+#define LMP91000_REG_STATUS             0x00
+#define LMP91000_REG_LOCK               0x01
+#define LMP91000_REG_TIACN              0x10
+#define LMP91000_REG_REFCN              0x11
+#define LMP91000_REG_MODECN             0x12
+
 class LMP91000 {
     
     public:
         LMP91000(const unsigned char menbPin);
-        ~LMP91000();
+        virtual ~LMP91000();
         
     public:
-        bool lock() const;
-        bool unLock() const;
+        bool lock();
+        bool unLock();
 
-        bool setGainAndLoad(unsigned char gain, unsigned char load) const;
-        bool setReferenceZeroAndBias(unsigned char refSource, unsigned char intZero, unsigned char biasSign, unsigned char bias) const;
-        bool setModeControl(unsigned char fetShort, unsigned char opMode) const;
-        bool writeRegisters(unsigned char tia, unsigned char ref, unsigned char mode) const;
-        bool readRegisters(unsigned char *tia, unsigned char *ref, unsigned char *mode) const;
+        bool setGainAndLoad(unsigned char gain, unsigned char load);
+        bool setReferenceZeroAndBias(unsigned char refSource, unsigned char intZero, unsigned char biasSign, unsigned char bias);
+        bool setModeControl(unsigned char fetShort, unsigned char opMode);
+        bool writeRegisters(unsigned char tia, unsigned char ref, unsigned char mode);
+        bool readRegisters(unsigned char *tia, unsigned char *ref, unsigned char *mode);
         
-        bool storePreset(unsigned char* name) const;
-        bool loadPreset() const;
-        void getPresetName(unsigned char* name) const;
+        bool storePreset();
+        bool loadPreset();
                 
-    private:
-        bool writeRegister(unsigned char address, unsigned char value) const;
-        bool readRegister(unsigned char address, unsigned char* value) const;
+    protected:
+        virtual bool writeRegister(unsigned char address, unsigned char value);
+        virtual bool readRegister(unsigned char address, unsigned char* value);
         
     private:
         const unsigned char m_menbPin;

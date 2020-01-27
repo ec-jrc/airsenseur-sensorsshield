@@ -13,46 +13,38 @@
  *
  * Date: 02/04/2015
  * Authors:
- * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu, 
- *   Laurent Spinelle, laurent.spinelle@jrc.ec.europa.eu and 
+ * - Michel Gerboles, michel.gerboles@jrc.ec.europa.eu,
+ *   Laurent Spinelle, laurent.spinelle@jrc.ec.europa.eu and
  *   Alexander Kotsev, alexander.kotsev@jrc.ec.europa.eu:
- *      European Commission - Joint Research Centre, 
+ *			European Commission - Joint Research Centre,
  * - Marco Signorini, marco.signorini@liberaintentio.com
  *
  * ===========================================================================
  */
 
-#ifndef _SHT31_H_
-#define _SHT31_H_
+#ifndef AD5694REVAL_H_
+#define AD5694REVAL_H_
 
-class SHT31 {
+#include "AD5694R.h"
 
-  private:
-    SHT31();
-  public:
-    SHT31(bool internal);
-    virtual ~SHT31();
+#define AD5694_DAC_NUMCHANNELS 0x04
 
-    // Initialize the sensor and reads
-    bool begin();
-    
-    bool startConvertion() const;
-    bool getSamples(unsigned short *temperature, unsigned short *humidity) const;
+class AD5694REval : public AD5694R {
+public:
+	AD5694REval(const unsigned char gainPin, const unsigned char address);
+	virtual ~AD5694REval();
 
-    bool isAvailable() const;
+public:
+	bool setGain(bool doubleGain);
+	double getChannelVoltage(unsigned char channelId);
 
-    bool getTemperatureChannelName(unsigned char* buffer) const;
-    bool getHumidityChannelName(unsigned char* buffer) const;
-      
-  private:
-    char sendCommand(unsigned short command) const;
-    char readData(unsigned short *temperature, unsigned short *humidity) const;
+protected:
+    virtual bool writeRegister(unsigned char address, unsigned char msb, unsigned char lsb);
+    virtual bool readRegister(unsigned char address, unsigned char* msb, unsigned char* lsb);
 
-  private:
-    char sensorAddress;
-    bool available;
+private:
+	bool m_doubleGain;
+	double value[AD5694_DAC_NUMCHANNELS];
 };
 
-#endif /* _SHT31_H_ */
-
-
+#endif /* AD5694REVAL_H_ */

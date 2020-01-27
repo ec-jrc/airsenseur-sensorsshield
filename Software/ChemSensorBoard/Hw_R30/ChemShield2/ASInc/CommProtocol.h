@@ -25,12 +25,11 @@
 #ifndef COMMPROTOCOL_H
 #define	COMMPROTOCOL_H
 
-#define FIRMWARE_VERSON                 "FW2.0.3 P2.0"
+#define FIRMWARE_VERSON                 "FW2.1.0 P2.1"
 
 #define COMMPROTOCOL_HEADER             '{'
 #define COMMPROTOCOL_TRAILER            '}'
 #define COMMPROTOCOL_ERROR              "{*}"
-#define COMMPROTOCOL_BUFFER_LENGTH      48
 
 #define COMMPROTOCOL_SENSOR_INQUIRY     'I'
 #define COMMPROTOCOL_ECHO               'E'
@@ -58,9 +57,15 @@
 #define COMMPROTOCOL_WRITE_BOARDSERIAL  'U'
 #define COMMPROTOCOL_READ_BOARDSERIAL   'V'
 #define COMMPROTOCOL_READ_FWVERSION     'Z'
+#define COMMPROTOCOL_READ_SAMPLEPERIOD	'a'
+#define COMMPROTOCOL_READ_UNITS			'b'
+#define COMMPROTOCOL_READ_BOARDTYPE		'c'
+#define COMMPROTOCOL_WRITE_CHANENABLE	'd'
+#define COMMPROTOCOL_READ_CHANENABLE	'e'
 
-#define MAX_INQUIRY_BUFLENGTH           8
-#define MAX_SERIAL_BUFLENGTH			  16
+#define MAX_SERIAL_BUFLENGTH			 32							// Stack temporary buffer size
+#define MAX_INQUIRY_BUFLENGTH            MAX_SERIAL_BUFLENGTH		// Maximum preset/channel name
+#define COMMPROTOCOL_BUFFER_LENGTH       (2*MAX_SERIAL_BUFLENGTH)	// Buffer used to store a single incoming data packet
 
 class SensorsArray;
 class SensorBusWrapper;
@@ -91,6 +96,7 @@ private:
     void writeValue(unsigned char value, bool last);
     void writeValue(unsigned short value, bool last);
     void writeValue(unsigned long value, bool last);
+    void writeValue(float value, bool last);
     void writeString(unsigned char* value, bool last);
     
 private:
@@ -107,6 +113,7 @@ private:
     static bool getSampleIIRDenominators(CommProtocol* context, unsigned char cmdOffset);
     static bool getFreeMemory(CommProtocol* context, unsigned char cmdOffset);
     static bool lastSample(CommProtocol* context, unsigned char cmdOffset);
+    static bool lastSampleHRes(CommProtocol* context, unsigned char cmdOffset);
     static bool sensorInquiry(CommProtocol* context, unsigned char cmdOffset);
     static bool loadPreset(CommProtocol* context, unsigned char cmdOffset);
     static bool savePreset(CommProtocol* context, unsigned char cmdOffset);
@@ -119,6 +126,11 @@ private:
     static bool writeBoardSerialNumber(CommProtocol* context, unsigned char cmdOffset);
     static bool readBoardSerialNumber(CommProtocol* context, unsigned char cmdOffset);
     static bool readFirmwareVersion(CommProtocol* context, unsigned char cmdOffset);
+    static bool readSamplePeriod(CommProtocol* context, unsigned char cmdOffset);
+    static bool readUnits(CommProtocol* context, unsigned char cmdOffset);
+    static bool readBoardType(CommProtocol* context, unsigned char cmdOffset);
+    static bool writeChannelEnable(CommProtocol* context, unsigned char cmdOffset);
+    static bool readChannelEnable(CommProtocol* context, unsigned char cmdOffset);
     
 private:
     

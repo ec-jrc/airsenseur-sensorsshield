@@ -72,6 +72,14 @@ unsigned char SamplesAverager::init(unsigned char size) {
     return bufferSize;
 }
 
+// Re-initialize the averager each time we start a sampling campaign
+void SamplesAverager::onStartSampling() {
+
+	if (bufferSize > 0) {
+		init(bufferSize-1);
+	}
+}
+
 // The moving average is calculated each sample but is latched at each buffer 
 // completion. This is for speed optimization (but requires an unsigned long accumulator)
 bool SamplesAverager::collectSample(unsigned short sample, unsigned long _timestamp) {
