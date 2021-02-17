@@ -32,7 +32,7 @@
  * - Laser status (extracted for debug purposes and set at the latest read value)
  */
 SamplesAveragerOPCN3::SamplesAveragerOPCN3() : SamplesAverager(OPCN3_CHAN_NUMBER-3),
-	sampleTime(0), sampleFlowRate(0), laserStatus(0) {
+	sampleTime(0), sampleFlowRate(0), laserStatus(0), periodTerminated(false) {
 }
 
 SamplesAveragerOPCN3::~SamplesAveragerOPCN3() {
@@ -41,16 +41,17 @@ SamplesAveragerOPCN3::~SamplesAveragerOPCN3() {
 bool SamplesAveragerOPCN3::collectSample(unsigned char channel, unsigned short sample, unsigned long _timestamp) {
 
 	if (channel <= OPCN3_VOL) {
-		return SamplesAverager::collectSample(channel, sample, _timestamp);
+		periodTerminated = SamplesAverager::collectSample(channel, sample, _timestamp);
+		return periodTerminated;
 	} else if (channel == OPCN3_TSA) {
 		sampleTime = sample;
-		return true;
+		return periodTerminated;
 	} else if (channel == OPCN3_FRT) {
 		sampleFlowRate = sample;
-		return true;
+		return periodTerminated;
 	} else if (channel == OPCN3_LSRST) {
 		laserStatus = sample;
-		return true;
+		return periodTerminated;
 	}
 
 	return false;

@@ -69,7 +69,7 @@ bool AD5694REval::writeRegister(unsigned char address, unsigned char msb, unsign
 		}
 
 		unsigned short dacValue = ((((unsigned short)msb) << 8) | lsb) >> 4;
-		value[channel] = 2.5f * (dacValue / 4095.0f);
+		value[channel] = 2.5f * (dacValue / 4096.0f);
 	}
 
 	return result;
@@ -99,7 +99,7 @@ bool AD5694REval::readRegister(unsigned char address, unsigned char* msb, unsign
 		}
 
 		unsigned short dacValue = ((((unsigned short)(*msb)) << 8) | (*lsb)) >> 4;
-		value[channel] = 2.5f * (dacValue / 4095.0f);
+		value[channel] = 2.5f * (dacValue / 4096.0f);
 	}
 
 	return result;

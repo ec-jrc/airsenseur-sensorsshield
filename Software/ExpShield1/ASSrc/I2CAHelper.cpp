@@ -41,8 +41,18 @@ bool I2CAHelper::write(unsigned short deviceAddress, unsigned short regAddress, 
 	return (res == HAL_OK);
 }
 
+bool I2CAHelper::write(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const {
+	HAL_StatusTypeDef res = HAL_I2C_Master_Transmit(&hi2c1, deviceAddress, pData, size, 500);
+	return (res == HAL_OK);
+}
+
 bool I2CAHelper::read(unsigned short deviceAddress, unsigned short regAddress, unsigned char addrSize, unsigned char* pData, unsigned short size) const {
 
 	HAL_StatusTypeDef res = HAL_I2C_Mem_Read(&hi2c1, deviceAddress, regAddress, addrSize, pData, size, 500);
+	return (res == HAL_OK);
+}
+
+bool I2CAHelper::read(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const {
+	HAL_StatusTypeDef res = HAL_I2C_Master_Receive(&hi2c1, deviceAddress, pData, size, 500);
 	return (res == HAL_OK);
 }

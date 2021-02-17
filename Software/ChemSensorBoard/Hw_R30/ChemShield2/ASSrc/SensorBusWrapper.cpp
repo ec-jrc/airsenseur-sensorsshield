@@ -26,10 +26,17 @@
 #include "SensorBusWrapper.h"
 #include "CommProtocol.h"
 #include "SerialBHelper.h"
+#include "CRC32Helper.h"
+
+#define SET_PROTOCOL_VERSION_IN_HEADER(v) txHeader[1] = (v)
+
+char SensorBusWrapper::txHeader[]  = { COMMPROTOCOL_PTM_SLAVE_HEADER, COMMPROTOCOL_PTM_VERSION_ZERO,
+									COMMPROTOCOL_MYBOARDID_MSB,	COMMPROTOCOL_BOARDID_BROADCAST, 0x00 };
+
 
 SensorBusWrapper::SensorBusWrapper(CommProtocol* lowLayerProtocol)
-	: rxStatus(IDLE), myBoardId(0), rxBoardId(COMMPROTOCOL_BOARDID_BROADCAST) ,
-	  rxBoardIdLSB('0'), timerCounter(0), rxProtocolTimeout(0), commProtocol(lowLayerProtocol)  {
+	: rxStatus(IDLE), myBoardId(0), rxBoardId(COMMPROTOCOL_BOARDID_BROADCAST), rxProtocolVersion(COMMPROTOCOL_PTM_VERSION_ZERO),
+	  timerCounter(0), rxProtocolTimeout(0), commProtocol(lowLayerProtocol)  {
 }
 
 SensorBusWrapper::~SensorBusWrapper() {
@@ -40,11 +47,13 @@ void SensorBusWrapper::init(unsigned char boardID) {
     myBoardId = boardID & 0x0F;
 
     // Evaluate the boardId LSB for future use
-    if (myBoardId < 10) {
-        rxBoardIdLSB = '0' + myBoardId;
-    } else {
+    char rxBoardIdLSB = '0' + myBoardId;
+    if ((myBoardId > 9) && (myBoardId < 16)) {
         rxBoardIdLSB = 'A' + myBoardId - 10;
     }
+
+    // Update the header, used to answer, with the board ID information
+    txHeader[3] = rxBoardIdLSB;
 
     // Initialize all other variables
     rxStatus = IDLE;
@@ -87,8 +96,10 @@ void SensorBusWrapper::onDataReceived(unsigned char rxChar) {
         break;
 
         case HEADER_FOUND: {
-            if (rxChar == COMMPROTOCOL_PTM_VERSION) {
+            if ((rxChar == COMMPROTOCOL_PTM_VERSION_ZERO) ||
+            	(rxChar == COMMPROTOCOL_PTM_VERSION_ONE)) {
                 // We expect a compatible protocol version
+            	rxProtocolVersion = rxChar;
                 rxStatus = VERSION_FOUND;
             } else {
                 // ... but we found something not valid...
@@ -161,20 +172,43 @@ void SensorBusWrapper::onDataReceived(unsigned char rxChar) {
     }
 }
 
+#define NIBBLEBINTOHEX(a) ((a)>0x09)?(((a)-0x0A)+'A'):((a)+'0');
+
 unsigned short SensorBusWrapper::write(char* buffer) const {
 
-	char header[] = { COMMPROTOCOL_PTM_SLAVE_HEADER,
-						COMMPROTOCOL_PTM_VERSION,
-						COMMPROTOCOL_MYBOARDID_MSB,
-						rxBoardIdLSB, 0x00 };
-
 	// Start sending the SensorBus header
-	SerialB.write(header);
+	SET_PROTOCOL_VERSION_IN_HEADER(rxProtocolVersion);
+	SerialB.write(txHeader);
 
 	// Replace the low level trailer with the sensor bus trailer
 	size_t len = strlen(buffer);
 	buffer[len-1] = COMMPROTOCOL_PTM_SLAVE_TRAILER;
 
 	// Send the payload, with no low level header, and the trailer
-	return SerialB.write(buffer+1) + 4;
+	if (rxProtocolVersion == COMMPROTOCOL_PTM_VERSION_ZERO) {
+		return SerialB.write(buffer+1) + 4;
+	} else {
+
+		// Calculate the CRC of the payload
+		long crc = CRC32.getCRC32((long*)(buffer+1), len-2);
+
+		// Remove the trailer from the original buffer
+		buffer[len-1] = '\0';
+
+		// Convert to ASCII
+		char valBuf[10];
+		valBuf[0] = NIBBLEBINTOHEX(((crc>>28) & 0x0F));
+		valBuf[1] = NIBBLEBINTOHEX(((crc>>24) & 0x0F));
+		valBuf[2] = NIBBLEBINTOHEX(((crc>>20) & 0x0F));
+		valBuf[3] = NIBBLEBINTOHEX(((crc>>16) & 0x0F));
+		valBuf[4] = NIBBLEBINTOHEX(((crc>>12) & 0x0F));
+		valBuf[5] = NIBBLEBINTOHEX(((crc>>8) & 0x0F));
+		valBuf[6] = NIBBLEBINTOHEX(((crc>>4) & 0x0F));
+		valBuf[7] = NIBBLEBINTOHEX((crc & 0x0F));
+		valBuf[8] = COMMPROTOCOL_PTM_SLAVE_TRAILER;
+		valBuf[9] = '\0';
+
+		// Send the payload followed by the CRC-32 and the trailer
+		return 4 + SerialB.write(buffer+1) + SerialB.write(valBuf);
+	}
 }

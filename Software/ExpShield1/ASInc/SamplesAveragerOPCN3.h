@@ -39,6 +39,7 @@ private:
 	unsigned short sampleTime;
 	unsigned short sampleFlowRate;
 	unsigned short laserStatus;
+	bool periodTerminated;
 };
 
 #endif /* SAMPLESAVERAGEROPCN3_H_ */

@@ -25,7 +25,7 @@
 #ifndef COMMPROTOCOL_H
 #define	COMMPROTOCOL_H
 
-#define FIRMWARE_VERSON                 "FW2.1.0 P2.1"
+#define FIRMWARE_VERSON                 "FW2.1.3 P3.0"
 
 #define COMMPROTOCOL_HEADER             '{'
 #define COMMPROTOCOL_TRAILER            '}'
@@ -63,7 +63,7 @@
 #define COMMPROTOCOL_WRITE_CHANENABLE	'd'
 #define COMMPROTOCOL_READ_CHANENABLE	'e'
 
-#define MAX_SERIAL_BUFLENGTH			 32							// Stack temporary buffer size
+#define MAX_SERIAL_BUFLENGTH			 64							// Stack temporary buffer size
 #define MAX_INQUIRY_BUFLENGTH            MAX_SERIAL_BUFLENGTH		// Maximum preset/channel name
 #define COMMPROTOCOL_BUFFER_LENGTH       (2*MAX_SERIAL_BUFLENGTH)	// Buffer used to store a single incoming data packet
 

@@ -33,7 +33,9 @@ public:
 
 public:
 	virtual bool write(unsigned short deviceAddress, unsigned short regAddress, unsigned char addrSize, unsigned char* pData, unsigned short size) const = 0;
+	virtual bool write(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const = 0;
 	virtual bool read(unsigned short deviceAddress, unsigned short regAddress, unsigned char addrSize, unsigned char* pData, unsigned short size) const = 0;
+	virtual bool read(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const = 0;
 };
 
 

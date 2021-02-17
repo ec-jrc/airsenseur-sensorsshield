@@ -29,21 +29,23 @@
 #include "DitherTool.h"
 #include "SamplesAverager.h"
 #include "OPCN3Device.h"
+#include "SPS30Device.h"
 
 // Physical sensor devices
 #define SENSOR_RD200M		0x00
 #define SENSOR_D300			0x01
 #define SENSOR_PMS5300		0x02
-#define SENSOR_OPCN3			0x03
+#define SENSOR_OPCN3		0x03
+#define SENSOR_SPS30		0x04
 
 // Note: There is an averager and a sampler for each physical sensor
-#define NUM_OF_TOTAL_SENSORS		(SENSOR_OPCN3 + 1)
+#define NUM_OF_TOTAL_SENSORS		(SENSOR_SPS30 + 1)
 #define NUM_OF_TOTAL_SAMPLERS	NUM_OF_TOTAL_SENSORS
 #define NUM_OF_TOTAL_AVERAGERS	NUM_OF_TOTAL_SENSORS
 
 // Logical data channels
 #define CHANNEL_RD200M					0x00
-#define CHANNEL_D300						0x01
+#define CHANNEL_D300					0x01
 #define CHANNEL_PMS5300_PM1CONC_ST		0x02
 #define CHANNEL_PMS5300_PM25CONC_ST		0x03
 #define CHANNEL_PMS5300_PM10CONC_ST		0x04
@@ -58,11 +60,13 @@
 #define CHANNEL_PMS5300_PART100			0x0D
 
 #define CHANNEL_OPCN3_FIRST				0x0E
-#define CHANNEL_OPCN3_VOLUME				(CHANNEL_OPCN3_FIRST + OPCN3_VOL)
+#define CHANNEL_OPCN3_VOLUME			(CHANNEL_OPCN3_FIRST + OPCN3_VOL)
 #define CHANNEL_OPCN3_LAST				(CHANNEL_OPCN3_FIRST + OPCN3_CHAN_NUMBER - 1)
 
+#define CHANNEL_SPS30_FIRST				(CHANNEL_OPCN3_LAST + 1)
+#define CHANNEL_SPS30_LAST				(CHANNEL_SPS30_FIRST + SPS30_NUM_CHANNELS)
 
-#define NUM_OF_TOTAL_CHANNELS    (CHANNEL_OPCN3_LAST + 1)
+#define NUM_OF_TOTAL_CHANNELS    		CHANNEL_SPS30_LAST
 
 #define DEFAULT_AVERAGE_SAMPLENUM       60
 

@@ -31,7 +31,6 @@
 #include "RD200MDevice.h"
 #include "PMS5003Device.h"
 #include "D300Device.h"
-#include "OPCN3Device.h"
 #include "Persistence.h"
 #include "EEPROMHelper.h"
 #include "GPIOHelper.h"
@@ -39,7 +38,7 @@
 
 #define BOARD_TYPE_EXP1_SENSORSHIELD		0x02
 
-#define GLOBAL_SAMPLE_PRESCALER_RATIO	99
+#define GLOBAL_SAMPLE_PRESCALER_RATIO	100
 
 DitherTool SensorsArray::ditherTool = DitherTool();
 
@@ -59,6 +58,9 @@ const SensorsArray::channeltosamplersubchannel SensorsArray::chToSamplerSubChann
 		{ SENSOR_OPCN3, OPCN3_PM01, false },{ SENSOR_OPCN3, OPCN3_PM25, false },{ SENSOR_OPCN3, OPCN3_PM10, false },
 		{ SENSOR_OPCN3, OPCN3_TEMP, false },{ SENSOR_OPCN3, OPCN3_HUM, false },{ SENSOR_OPCN3, OPCN3_VOL, false },
 		{ SENSOR_OPCN3, OPCN3_TSA, false },{ SENSOR_OPCN3, OPCN3_FRT, false },{ SENSOR_OPCN3, OPCN3_LSRST, false },
+		{ SENSOR_SPS30, SPS30_PM1CONC, true }, { SENSOR_SPS30, SPS30_PM25CONC, false }, { SENSOR_SPS30, SPS30_PM4CONC, false },  { SENSOR_SPS30, SPS30_PM10CONC, false },
+		{ SENSOR_SPS30, SPS30_PART05, false }, { SENSOR_SPS30, SPS30_PART10, false }, { SENSOR_SPS30, SPS30_PART25, false }, { SENSOR_SPS30, SPS30_PART40, false }, { SENSOR_SPS30, SPS30_PART100, false },
+		{ SENSOR_SPS30, SPS30_TYPSIZE, false }
 };
 
 SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPrescaler(0) {
@@ -77,18 +79,21 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPresc
     sensors[SENSOR_D300] = new D300Device();
     sensors[SENSOR_PMS5300] = new PMS5003Device();
     sensors[SENSOR_OPCN3] = new OPCN3Device();
+    sensors[SENSOR_SPS30] = new SPS30Device();
 
     // Initialize the sampler units
     samplers[SENSOR_RD200M] = new FixedRateSampler(1, sensors[SENSOR_RD200M], RD200MDevice::defaultSampleRate(), RD200MDevice::defaultDecimationValue());
     samplers[SENSOR_D300] = new FixedRateSampler(1, sensors[SENSOR_D300], D300Device::defaultSampleRate());
     samplers[SENSOR_PMS5300] = new FixedRateSampler(PSM5003_NUM_CHANNELS, sensors[SENSOR_PMS5300], FixedRateSampler::DeviceDrivenSampleRate());
     samplers[SENSOR_OPCN3] = new Sampler(OPCN3_CHAN_NUMBER, sensors[SENSOR_OPCN3]);
+    samplers[SENSOR_SPS30] = new FixedRateSampler(SPS30_NUM_CHANNELS, sensors[SENSOR_SPS30], SPS30Device::defaultSampleRate());
 
     // Create the averagers
     averagers[SENSOR_RD200M] = new SamplesAverager(1);
     averagers[SENSOR_D300] = new SamplesAverager(1);
     averagers[SENSOR_PMS5300] = new SamplesAverager(PSM5003_NUM_CHANNELS);
     averagers[SENSOR_OPCN3] = new SamplesAveragerOPCN3();
+    averagers[SENSOR_SPS30] = new SamplesAverager(SPS30_NUM_CHANNELS);
     
     // Set the dithering tool. See the above comment.
     averagers[CHANNEL_RD200M]->setDitherTool(&ditherTool);
@@ -132,7 +137,7 @@ bool SensorsArray::timerTick() {
     // This shield does not requires fast sampling rates. A global prescaler
     // is used to reduce the sampling rate to a reasonable value (one sampletick = 1s)
     globalPrescaler++;
-    if (globalPrescaler == GLOBAL_SAMPLE_PRESCALER_RATIO) {
+    if (globalPrescaler >= GLOBAL_SAMPLE_PRESCALER_RATIO) {
     		globalPrescaler = 0;
 
 		// Loop on each sensor samplers

@@ -25,7 +25,7 @@
 #include "LMP91000Eval.h"
 
 const unsigned char LMP91000Eval::loadTable[] = { 10, 33, 50, 100 };
-const double LMP91000Eval::gainTable[] = { 1e9, 2750, 3500, 7000, 14000, 35000, 120000, 350000 };
+const double LMP91000Eval::gainTable[] = { 1e6, 2742, 3488, 6951, 13807, 33816, 107143, 259259 };
 const unsigned char LMP91000Eval::intZeroTable[] = { 20, 50, 67, 00 };
 
 

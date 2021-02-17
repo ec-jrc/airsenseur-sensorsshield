@@ -43,6 +43,8 @@
  extern UART_HandleTypeDef huart3;
  extern UART_HandleTypeDef huart4;
 
+ extern CRC_HandleTypeDef hcrc;
+
 
 #ifdef __cplusplus
 }

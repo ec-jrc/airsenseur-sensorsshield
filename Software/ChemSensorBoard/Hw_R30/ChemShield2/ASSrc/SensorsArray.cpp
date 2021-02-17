@@ -418,14 +418,13 @@ bool SensorsArray::getLastSample(unsigned char channel, float &lastSample, unsig
 				double vRefAFE = (afeRifInternal)? 5.0 : DACList[channel]->getChannelVoltage(CHANNEL_DAC_REFAFE);
 				double intZeroVoltage = vRefAFE*(((double)AFEList[channel]->getIntZero())/100.0);
 				double absSampleVoltage = ADCList[channel].getVoltage(lastSample, vRefm, vRefAD);
-				unsigned char load = AFEList[channel]->getLoad();
 				double gain = AFEList[channel]->getGain();
 
 				// Get sample Voltage relative to the AFE internal zero
 				double sampleVoltage = absSampleVoltage - intZeroVoltage;
 
 				// Convert to current
-				double sampleCurrent = (sampleVoltage / (load*gain));
+				double sampleCurrent = (sampleVoltage / gain);
 
 				// Take nA to be sent over the wire
 				lastSample = (float) sampleCurrent * 1e9;

@@ -22,37 +22,20 @@
  * ===========================================================================
  */
 
-#ifndef SERIALBHELPER_H_
-#define SERIALBHELPER_H_
 
-#include "SerialHelper.h"
+#include <GlobalHalHandlers.h>
+#include "CRC32Helper.h"
 
-#define SERIALBBUFFERSIZE	64
+// Singleton CRC32Helper instance
+CRC32Helper CRC32Helper::instance;
 
-class SerialBHelper : public SerialHelper {
-private:
-	SerialBHelper();
+CRC32Helper::CRC32Helper() {
+}
 
-public:
-	virtual ~SerialBHelper();
+CRC32Helper::~CRC32Helper() {
+}
 
-public:
-	static inline SerialHelper* getInstance() { return &instance; }
-	virtual void init() const;
-	virtual void onDataRx(bool halfBuffer);
-	virtual uint16_t write(char* buffer) const;
-	virtual uint16_t write(char* buffer, uint16_t len) const;
-	virtual bool available() const;
-	virtual uint8_t read();
-	virtual void onErrorCallback();
+long CRC32Helper::getCRC32(long pBuffer[], long bufferLength) {
+	return HAL_CRC_Calculate(&hcrc, (uint32_t*)pBuffer, bufferLength);
+}
 
-private:
-	static SerialBHelper instance;
-	static uint8_t txBuffer[SERIALBBUFFERSIZE];
-	static uint8_t rxBuffer[2];
-	static volatile bool rxError;
-};
-
-#define SerialB (*(SerialBHelper::getInstance()))
-
-#endif /* SERIALBHELPER_H_ */

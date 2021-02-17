@@ -73,26 +73,21 @@ unsigned char SamplesAverager::init(unsigned char size) {
         delete[] dataBuffer;
     }
 
-    if (size != 0) {
-		unsigned short overallBufferSize = size * channels;
+    // The buffer should be 1 byte more than what's requested.
+    // We need to store at least one sample even if we don't
+    // need any average
+    size = size+1;
 
-		reset();
-		dataBuffer = new unsigned short [overallBufferSize];
-		if (dataBuffer) {
-			bufferSize = size;
-			memset(dataBuffer, 0, overallBufferSize*sizeof(unsigned short));
-		}
-    } else {
-    		bufferSize = 0;
-    }
+	unsigned short overallBufferSize = size * channels;
+
+	reset();
+	dataBuffer = new unsigned short [overallBufferSize];
+	if (dataBuffer) {
+		bufferSize = size;
+		memset(dataBuffer, 0, overallBufferSize*sizeof(unsigned short));
+	}
     
-    // Return buffersize...
-    if (bufferSize) {
-    	return bufferSize;
-    }
-
-    // or at least 1 (when average is disabled)
-    return 1;
+    return bufferSize;
 }
 
 // The moving average is calculated each sample but is latched at each buffer 
@@ -102,20 +97,12 @@ bool SamplesAverager::collectSample(unsigned char channel, unsigned short sample
     if (channel >= channels)
         return false;
 
+    if (!dataBuffer)
+        return false;
+
     unsigned char* sampleOffset = sampleOffsets+channel;
     unsigned long* accumulator = accumulators+channel;
     unsigned short* lastAverageSample = lastAverageSamples+channel;
-
-    if (bufferSize == 0) {
-		*lastAverageSample = sample;
-		*accumulator = sample;
-		timestamp = _timestamp;
-		return true;
-    }
-
-    if (!dataBuffer) {
-    		return false;
-    }
 
     // Remove the old sample from the accumulator
     *accumulator = *accumulator - dataBuffer[(channel*bufferSize) + *sampleOffset];
@@ -152,7 +139,10 @@ bool SamplesAverager::collectSample(unsigned char channel, unsigned short sample
 }
 
 unsigned char SamplesAverager::getBufferSize() {
-	return bufferSize;
+    if (bufferSize == 0)
+        return bufferSize;
+
+    return bufferSize - 1;
 }
 
 void SamplesAverager::setDitherTool(DitherTool* tool) {

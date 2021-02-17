@@ -38,7 +38,9 @@ public:
 public:
 	static inline I2CAHelper* getInstance() { return &instance; }
 	bool write(unsigned short deviceAddress, unsigned short regAddress, unsigned char addrSize, unsigned char* pData, unsigned short size) const;
+	bool write(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const;
 	bool read(unsigned short deviceAddress, unsigned short regAddress, unsigned char addrSize, unsigned char* pData, unsigned short size) const;
+	bool read(unsigned short deviceAddress, unsigned char* pData, unsigned short size) const;
 
 private:
 	static I2CAHelper instance;

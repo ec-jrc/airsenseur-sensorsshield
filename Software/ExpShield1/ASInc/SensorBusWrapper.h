@@ -31,7 +31,8 @@
 #define COMMPROTOCOL_PTM_SLAVE_HEADER   '('
 #define COMMPROTOCOL_PTM_SLAVE_TRAILER  ')'
 
-#define COMMPROTOCOL_PTM_VERSION        '0'
+#define COMMPROTOCOL_PTM_VERSION_ZERO   '0'
+#define COMMPROTOCOL_PTM_VERSION_ONE	'1'
 
 #define COMMPROTOCOL_BOARDID_BROADCAST  0xFF
 #define COMMPROTOCOL_MYBOARDID_MSB      '0'
@@ -63,7 +64,8 @@ private:
 
     unsigned char myBoardId;
     unsigned char rxBoardId;
-    char rxBoardIdLSB;
+    unsigned char rxProtocolVersion;
+    static char txHeader[];
 
     unsigned short timerCounter;
     unsigned short rxProtocolTimeout;

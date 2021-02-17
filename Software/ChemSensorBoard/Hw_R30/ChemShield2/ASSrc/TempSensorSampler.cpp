@@ -83,9 +83,11 @@ bool TempSensorSampler::sampleLoop() {
         sensor.getSamples(&temperatureSample, &lastHumiditySample);
 
         go = false;
-        humiditySampleReady = true;
 
-        if (enabled) {
+        bool sensorAvailable = sensor.isAvailable();
+        humiditySampleReady = sensorAvailable;
+
+        if (sensorAvailable && enabled) {
         	onReadSample(temperatureSample);
 
 			// Filter with two cascade single pole IIRs

@@ -61,7 +61,9 @@ extern "C" {
 
 #define OPC_SS			 18
 
-#define LAST_UNUSEDPIN    19
+#define SPARE1			19
+
+#define LAST_UNUSEDPIN    20
     
 // EEPROM memory map persistence    
     
@@ -89,6 +91,7 @@ extern "C" {
 // 1010 - 101F -> Sensor 2 serial number (ELT300)
 // 1020 - 102F -> Sensor 3 serial number (PMS5003)
 // 1030 - 103F -> Sensor 4 serial number (OPC-N3)
+// 1040 - 104F -> Sensor 5 serial number (SPS30)
 #define SERIAL_NUMBER_MAXLENGTH         0x10 /* See also in CommProtocol for MAX_SERIAL_BUFLENGTH */
 #define SENSOR_SERIAL_NUMBER(a)         (0x1000 + ((a) * SERIAL_NUMBER_MAXLENGTH))
 
