@@ -27,10 +27,12 @@
 #include "FixedRateSampler.h"
 #include "SamplesAverager.h"
 #include "SamplesAveragerOPCN3.h"
+#include "SamplesAveragerNextPM.h"
 #include "SensorDevice.h"
 #include "RD200MDevice.h"
 #include "PMS5003Device.h"
 #include "D300Device.h"
+#include "NextPMDevice.h"
 #include "Persistence.h"
 #include "EEPROMHelper.h"
 #include "GPIOHelper.h"
@@ -60,7 +62,10 @@ const SensorsArray::channeltosamplersubchannel SensorsArray::chToSamplerSubChann
 		{ SENSOR_OPCN3, OPCN3_TSA, false },{ SENSOR_OPCN3, OPCN3_FRT, false },{ SENSOR_OPCN3, OPCN3_LSRST, false },
 		{ SENSOR_SPS30, SPS30_PM1CONC, true }, { SENSOR_SPS30, SPS30_PM25CONC, false }, { SENSOR_SPS30, SPS30_PM4CONC, false },  { SENSOR_SPS30, SPS30_PM10CONC, false },
 		{ SENSOR_SPS30, SPS30_PART05, false }, { SENSOR_SPS30, SPS30_PART10, false }, { SENSOR_SPS30, SPS30_PART25, false }, { SENSOR_SPS30, SPS30_PART40, false }, { SENSOR_SPS30, SPS30_PART100, false },
-		{ SENSOR_SPS30, SPS30_TYPSIZE, false }
+		{ SENSOR_SPS30, SPS30_TYPSIZE, false },
+		{ SENSOR_NEXTPM, NEXTPM_PM1PCS, true }, { SENSOR_NEXTPM, NEXTPM_PM25PCS, false }, { SENSOR_NEXTPM, NEXTPM_PM10PCS, false },
+		{ SENSOR_NEXTPM, NEXTPM_PM1CONC, false },{ SENSOR_NEXTPM, NEXTPM_PM25CONC, false },{ SENSOR_NEXTPM, NEXTPM_PM10CONC, false },
+		{ SENSOR_NEXTPM, NEXTPM_TEMPERATURE, false }, { SENSOR_NEXTPM, NEXTPM_HUMIDITY, false }, { SENSOR_NEXTPM, NEXTPM_STATUS, false },
 };
 
 SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPrescaler(0) {
@@ -80,6 +85,7 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPresc
     sensors[SENSOR_PMS5300] = new PMS5003Device();
     sensors[SENSOR_OPCN3] = new OPCN3Device();
     sensors[SENSOR_SPS30] = new SPS30Device();
+    sensors[SENSOR_NEXTPM] = new NextPMDevice();
 
     // Initialize the sampler units
     samplers[SENSOR_RD200M] = new FixedRateSampler(1, sensors[SENSOR_RD200M], RD200MDevice::defaultSampleRate(), RD200MDevice::defaultDecimationValue());
@@ -87,6 +93,7 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPresc
     samplers[SENSOR_PMS5300] = new FixedRateSampler(PSM5003_NUM_CHANNELS, sensors[SENSOR_PMS5300], FixedRateSampler::DeviceDrivenSampleRate());
     samplers[SENSOR_OPCN3] = new Sampler(OPCN3_CHAN_NUMBER, sensors[SENSOR_OPCN3]);
     samplers[SENSOR_SPS30] = new FixedRateSampler(SPS30_NUM_CHANNELS, sensors[SENSOR_SPS30], SPS30Device::defaultSampleRate());
+    samplers[SENSOR_NEXTPM] = new FixedRateSampler(NEXTPM_NUM_CHANNELS, sensors[SENSOR_NEXTPM], NextPMDevice::defaultSampleRate());
 
     // Create the averagers
     averagers[SENSOR_RD200M] = new SamplesAverager(1);
@@ -94,6 +101,7 @@ SensorsArray::SensorsArray() : samplingEnabled(false), timestamp(0), globalPresc
     averagers[SENSOR_PMS5300] = new SamplesAverager(PSM5003_NUM_CHANNELS);
     averagers[SENSOR_OPCN3] = new SamplesAveragerOPCN3();
     averagers[SENSOR_SPS30] = new SamplesAverager(SPS30_NUM_CHANNELS);
+    averagers[SENSOR_NEXTPM] = new SamplesAveragerNextPM();
     
     // Set the dithering tool. See the above comment.
     averagers[CHANNEL_RD200M]->setDitherTool(&ditherTool);
@@ -380,7 +388,12 @@ bool SensorsArray::saveSensorSerialNumber(unsigned char channel, unsigned char* 
 	// Write the serial number only if the sensor does not support serial number natively
 	if (sensors[chToSamplerSubChannel[channel].sampler]->getSerial() == NULL) {
 		unsigned short address = SENSOR_SERIAL_NUMBER(chToSamplerSubChannel[channel].sampler);
-		return EEPROM.write(address, buffer, buffSize);
+
+		// Safety check of incoming data
+		unsigned char maxSize = (buffSize < SERIAL_NUMBER_MAXLENGTH)? buffSize : SERIAL_NUMBER_MAXLENGTH;
+		buffer[SERIAL_NUMBER_MAXLENGTH-1] = 0;
+
+		return EEPROM.write(address, buffer, maxSize);
 	}
 
 	return true;

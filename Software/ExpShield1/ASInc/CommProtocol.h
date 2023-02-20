@@ -25,7 +25,7 @@
 #ifndef COMMPROTOCOL_H
 #define	COMMPROTOCOL_H
 
-#define FIRMWARE_VERSON                 "FW1.2.0 P3.0"
+#define FIRMWARE_VERSON                 "FW1.3.0 P3.0"
 
 #define COMMPROTOCOL_HEADER             '{'
 #define COMMPROTOCOL_TRAILER            '}'
@@ -68,7 +68,6 @@ class CommProtocol {
 
 public:
 	typedef enum _source {
-		SOURCE_SERIAL,
 		SOURCE_SENSORBUS,
 		SOURCE_USB,
 		SOURCE_NONE

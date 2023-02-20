@@ -25,6 +25,8 @@
 #ifndef PERSISTENCE_H
 #define	PERSISTENCE_H
 
+#include "main.h"
+
 #ifdef	__cplusplus
 extern "C" {
 #endif
@@ -92,6 +94,7 @@ extern "C" {
 // 1020 - 102F -> Sensor 3 serial number (PMS5003)
 // 1030 - 103F -> Sensor 4 serial number (OPC-N3)
 // 1040 - 104F -> Sensor 5 serial number (SPS30)
+// 1050 - 105F -> Sensor 6 serial number (NextPM)
 #define SERIAL_NUMBER_MAXLENGTH         0x10 /* See also in CommProtocol for MAX_SERIAL_BUFLENGTH */
 #define SENSOR_SERIAL_NUMBER(a)         (0x1000 + ((a) * SERIAL_NUMBER_MAXLENGTH))
 

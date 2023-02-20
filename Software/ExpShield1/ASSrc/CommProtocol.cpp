@@ -29,7 +29,6 @@
 #include "SensorsArray.h"
 
 #include <SensorBusWrapper.h>
-#include <SerialAHelper.h>
 #include <SerialBHelper.h>
 #include <SerialUSBHelper.h>
 
@@ -78,7 +77,7 @@ void CommProtocol::reset() {
     rxStatus = RX_IDLE;
     offset = 0;
     timer = 0;
-    lastSourceId = SOURCE_SERIAL;
+    lastSourceId = SOURCE_SENSORBUS;
 }
 
 void CommProtocol::timerTick() {
@@ -165,11 +164,6 @@ void CommProtocol::processBuffer() {
     
     // Send back the result
     switch (lastSourceId) {
-    		case SOURCE_SERIAL: {
-    			SerialA.write((char*)buffer);
-    		}
-    			break;
-
     		case SOURCE_SENSORBUS: {
     			if (sensorBus) {
     				sensorBus->write((char*)buffer);

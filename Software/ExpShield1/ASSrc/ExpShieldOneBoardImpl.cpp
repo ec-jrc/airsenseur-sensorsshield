@@ -60,7 +60,6 @@ void timerInterrupt() {
 
 void uart1Interrupt(unsigned char halfBuffer) {
 	SerialA.onDataRx(halfBuffer!=0);
-	LEDs.pulse(LEDsHelper::RXDATA);
 }
 
 void uart2Interrupt(unsigned char halfBuffer) {
@@ -106,8 +105,7 @@ void setup_impl() {
     // Initialize LEDs
 	LEDs.init();
 
-    // Initialize the serial lines
-    SerialA.init();
+    // Initialize the serial line for sensor bus
     SerialB.init();
 
     // Instantiate and initialize the main objects
@@ -132,12 +130,6 @@ void loop_impl() {
     // Heartbeat led
     if (newSample) {
         LEDs.pulse(LEDsHelper::HEARTBEAT);
-    }
-
-    // Handle the serial line A (PtP protocol)
-    if (SerialA.available()) {
-        unsigned char val = SerialA.read();
-        commProtocol->onDataReceived(val, CommProtocol::SOURCE_SERIAL);
     }
 
     // Handle the serial line B (SensorBus)
