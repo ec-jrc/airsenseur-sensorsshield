@@ -173,6 +173,10 @@ unsigned long* SamplesAverager::getAccumulators() const {
 	return accumulators;
 }
 
+bool SamplesAverager::isConsolidated() const {
+	return consolidated;
+}
+
 bool SamplesAverager::loadPreset(unsigned char myID) {
 
     // Read the buffer size

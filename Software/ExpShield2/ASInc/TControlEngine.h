@@ -57,6 +57,7 @@ private:
 	bool enabled;
 	unsigned char prescaler;
 	unsigned char extFanBlankTimer;
+	unsigned char overheatBlankTimer;
 	short currentDrive;
 	unsigned short coolingMin;
 	unsigned short heatingMin;

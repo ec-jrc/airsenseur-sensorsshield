@@ -26,6 +26,7 @@
 #ifndef PIDDEVICE_H_
 #define PIDDEVICE_H_
 
+#include <stdint.h>
 #include "SensorDevice.h"
 
 #define PIDDEV_CHANNEL_PID_HEATER	0x00
@@ -48,10 +49,10 @@ public:
 	virtual const char* getChannelName(unsigned char channel) const;
 	virtual bool setChannelName(unsigned char channel, const char* name);
 	virtual const char* getMeasurementUnit(unsigned char channel) const;
-	virtual float evaluateMeasurement(unsigned char channel, float value) const;
+	virtual float evaluateMeasurement(unsigned char channel, float value, bool firstSample) const;
 	virtual void triggerSample();
-	virtual bool writeGenericRegister(unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize);
-	virtual bool readGenericRegister(unsigned int address, unsigned char* buffer, unsigned char buffSize);
+	virtual bool writeGenericRegister(unsigned int address, unsigned int value);
+	virtual bool readGenericRegister(unsigned int address, unsigned int& value);
 
 	static PIDDevice* const getInstance();
 	static const unsigned char defaultSampleRate();
@@ -62,18 +63,19 @@ private:
 private:
 	void applyPIDCoefficients();
 	void writePIDCoefficientsToEEPROM();
+	float roundPIDCoefficient(float value);
 
 private:
 	typedef struct pidcoeffs {
 		union __attribute__((__packed__)) {
-			unsigned short raw[6];
+			int32_t raw[6];
 			struct __attribute__((__packed__)) {
-				unsigned short P;
-				unsigned short I;
-				unsigned short D;
-				unsigned short mult;
-				unsigned short dzHeat;
-				unsigned short dzCool;
+				int32_t P;
+				int32_t I;
+				int32_t D;
+				int32_t dzHeat;
+				int32_t dzCool;
+				int32_t refSource;
 			} coeff;
 		} data;
 		long crc;

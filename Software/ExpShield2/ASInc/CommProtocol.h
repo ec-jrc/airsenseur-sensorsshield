@@ -25,7 +25,7 @@
 #ifndef COMMPROTOCOL_H
 #define	COMMPROTOCOL_H
 
-#define FIRMWARE_VERSON                 "FW1.0.1 P3.1"
+#define FIRMWARE_VERSON                 "FW1.1.0 P3.1"
 
 #define COMMPROTOCOL_HEADER             '{'
 #define COMMPROTOCOL_TRAILER            '}'
@@ -91,9 +91,11 @@ private:
     void processBuffer();
     bool renderOKAnswer(unsigned char cmdOffset, unsigned char param);
     unsigned char getParameter(unsigned char parNum);
+    unsigned short getShortParameter(unsigned char parNum);
     unsigned int getInt32Parameter(unsigned char parNum);
     void writeValue(unsigned char value, bool last);
     void writeValue(unsigned short value, bool last);
+    void writeValue(unsigned int value, bool last);
     void writeValue(unsigned long value, bool last);
     void writeValue(float value, bool last);
     void writeString(unsigned char* value, bool last);

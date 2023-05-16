@@ -38,7 +38,7 @@
 #include "PWMHelper.h"
 #include "CCDriveEngine.h"
 #include "TControlEngine.h"
-#include "ADT7470Device.h"
+#include "IntChamberTempRef.h"
 
 #include "../ASInc/Persistence.h"
 #include "SensorsArray.h"
@@ -61,6 +61,7 @@ void timerInterrupt() {
 
     LEDs.tick();
     EEPROM.tick();
+    AS_INTCH_TEMPREF.tick();
     AS_TCONTROL.tick();
 }
 
@@ -192,7 +193,7 @@ void loop_impl() {
 
     // Retrieve current internal chamber setpoint and temperature
     short currentChamberSetpoint, currentChamberTemperature;
-    AS_ADT7470.getChamberSetpointAndTemperature(currentChamberSetpoint, currentChamberTemperature);
+    AS_INTCH_TEMPREF.getChamberSetpointAndTemperature(currentChamberSetpoint, currentChamberTemperature);
 
     // Handle the Temperature controller engine
     AS_TCONTROL.setTemperatureSetpoint(currentChamberSetpoint);

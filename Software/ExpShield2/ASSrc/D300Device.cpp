@@ -123,7 +123,7 @@ const char* D300Device::getMeasurementUnit(unsigned char channel) const {
 	return "ppm";
 }
 
-float D300Device::evaluateMeasurement(unsigned char channel, float value) const {
+float D300Device::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
 	return value;
 }
 

@@ -22,41 +22,55 @@
  * ===========================================================================
  */
 
-#ifndef D300DEVICE_H_
-#define D300DEVICE_H_
+#ifndef INTCHAMBERTEMPREF_H_
+#define INTCHAMBERTEMPREF_H_
 
-#include "SensorDevice.h"
+class IntChamberTempRef {
 
-class D300Device : public SensorDevice {
 public:
-	D300Device();
-	virtual ~D300Device();
+	typedef enum _source {
+		SOURCE_TEMPERATURE_I = 0x00,
+		SOURCE_ADT7470_T_INT_CHAMBER = 0x01,
+		SOURCE_K96_TEMP_NTC0 = 0x02,
+		SOURCE_K96_TEMP_NTC1 = 0x03,
+		SOURCE_K96_T_RH0 = 0x04,
+		SOURCE_FIRST_INVALID = 0x05,
+	} source ;
 
-	virtual void onStartSampling();
-	virtual void onStopSampling();
-	virtual void setLowPowerMode(bool lowPower);
-	virtual bool init();
-	virtual void loop();
-	virtual void tick();
+public:
+	IntChamberTempRef();
+	virtual ~IntChamberTempRef();
 
-	virtual const char* getSerial() const;
+public:
+	void setSource(source _source);
+	void setSetpoint(short _setpoint);
+	void setReadTemperature(source _source, short temperature);
+	void getChamberSetpointAndTemperature(short& _setpoint, short& temperature);
 
-	virtual bool setChannelName(unsigned char channel, const char* name);
-	virtual const char* getChannelName(unsigned char channel) const;
-	virtual const char* getMeasurementUnit(unsigned char channel) const;
-	virtual float evaluateMeasurement(unsigned char channel, float value, bool firstSample) const;
-
-	virtual void triggerSample();
-
-	static const unsigned char defaultSampleRate();
+public:
+	void tick();
+	static inline IntChamberTempRef* getInstance() { return &instance; }
 
 private:
-	void powerOn(bool on);
+	bool checkTemperatureRange(short temperature);
 
 private:
-	volatile bool go;
-	volatile unsigned short blankTimer;
-	bool available;
+	typedef struct _temperatures {
+		short value;
+		short timeout;
+	} temperatures;
+
+private:
+	source curSource;
+	short setpoint;
+	unsigned short prescaler;
+	temperatures curTemperatures[(unsigned short)SOURCE_FIRST_INVALID];
+
+private:
+	static IntChamberTempRef instance;
+
 };
 
-#endif /* D300DEVICE_H_ */
+#define AS_INTCH_TEMPREF (*(IntChamberTempRef::getInstance()))
+
+#endif /* INTCHAMBERTEMPREF_H_ */

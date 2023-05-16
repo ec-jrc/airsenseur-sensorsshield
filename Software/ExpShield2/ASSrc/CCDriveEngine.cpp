@@ -48,6 +48,18 @@ CCDriveEngine::~CCDriveEngine() {
 // Current drive setpoint and actual values are expressed in 1/100 %
 void CCDriveEngine::setCurrentSetPoint(unsigned short _cSetpoint) {
 	setSetPoint(_cSetpoint);
+
+	// When the setpoint is set to 0, is better to turn off the PWM
+	// istantaneously instead of delegate to the main loop
+	// This is because, during very high transient (more frequently when
+	// the user generates a very big temperature setpoint change)
+	// it may happens that the TControlEngine starts heating at full power
+	// when cooling was still running.
+	// This prevents current spikes greater than 7.5A that may blow
+	// the protection fuse
+	if (_cSetpoint == 0) {
+		AS_PWM.setPeltierDutyCycle(0);
+	}
 }
 
 // Current drive setpoint and actual values are expressed in 1/100 %

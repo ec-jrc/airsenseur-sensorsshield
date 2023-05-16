@@ -209,6 +209,14 @@ unsigned char CommProtocol::getParameter(unsigned char parNum) {
     return result;
 }
 
+unsigned short CommProtocol::getShortParameter(unsigned char parNum) {
+
+	unsigned char MSB = getParameter(parNum);
+	unsigned char LSB = getParameter(parNum+1);
+
+	return ((((unsigned short)MSB) << 8) & 0xFF00) | LSB;
+}
+
 unsigned int CommProtocol::getInt32Parameter(unsigned char parNum) {
 
 	unsigned char MMSB = getParameter(parNum);
@@ -216,9 +224,9 @@ unsigned int CommProtocol::getInt32Parameter(unsigned char parNum) {
 	unsigned char LMSB = getParameter(parNum+2);
 	unsigned char LLSB = getParameter(parNum+3);
 
-	return ((MMSB << 24) & 0xFF000000) |
-		   ((MLSB << 16) & 0x00FF0000) |
-		   ((LMSB << 8) & 0xFF00) | (LLSB);
+	return ((((unsigned int)MMSB) << 24) & 0xFF000000) |
+		   ((((unsigned int)MLSB) << 16) & 0x00FF0000) |
+		   ((((unsigned short)LMSB) << 8) & 0xFF00) | (LLSB);
 
 }
 
@@ -240,6 +248,11 @@ void CommProtocol::writeValue(unsigned short value, bool last) {
     
     writeValue((unsigned char)((value>>8)&0xFF), false);
     writeValue((unsigned char)(value&0xFF), last);
+}
+
+void CommProtocol::writeValue(unsigned int value, bool last) {
+	writeValue((unsigned short)((value>>16) & 0xFFFF), false);
+	writeValue((unsigned short)(value & 0xFFFF), last);
 }
 
 void CommProtocol::writeValue(unsigned long value, bool last) {
@@ -494,7 +507,7 @@ bool CommProtocol::savePreset(CommProtocol* context, unsigned char cmdOffset) {
 bool CommProtocol::setSetpointRegister(CommProtocol* context, unsigned char cmdOffset) {
 
 	unsigned char channel = context->getParameter(0);
-	unsigned char setpointVal = context->getParameter(1);
+	unsigned short setpointVal = context->getShortParameter(1);
 
 	if (context->sensorsArray->setSetpoint(channel, setpointVal)) {
 		return context->renderOKAnswer(cmdOffset, channel);
@@ -507,7 +520,7 @@ bool CommProtocol::setSetpointRegister(CommProtocol* context, unsigned char cmdO
 bool CommProtocol::getSetpointRegister(CommProtocol* context, unsigned char cmdOffset) {
 
 	unsigned char channel = context->getParameter(0);
-	unsigned char setpointVal;
+	unsigned short setpointVal;
 
 	if(!context->sensorsArray->getSetpoint(channel, setpointVal)) {
 		return false;
@@ -698,7 +711,7 @@ bool CommProtocol::readChannelEnable(CommProtocol* context, unsigned char cmdOff
     return true;
 }
 
-// Function handler: write an int (64bit) value into a specified register (64bit address)
+// Function handler: write an int (32bit) value into a specified register (32bit address)
 // for a specified channel
 bool CommProtocol::writeRegister(CommProtocol* context, unsigned char cmdOffset) {
 
@@ -707,8 +720,7 @@ bool CommProtocol::writeRegister(CommProtocol* context, unsigned char cmdOffset)
     unsigned int address = context->getInt32Parameter(1);
     unsigned int value = context->getInt32Parameter(5);
 
-    unsigned char result[MAX_SERIAL_BUFLENGTH];
-    if (!context->sensorsArray->writeGenericRegisterChannel(channel, address, value, result, MAX_SERIAL_BUFLENGTH)) {
+    if (!context->sensorsArray->writeGenericRegisterChannel(channel, address, value)) {
     	return false;
     }
 
@@ -716,12 +728,13 @@ bool CommProtocol::writeRegister(CommProtocol* context, unsigned char cmdOffset)
     context->buffer[1] = validCommands[cmdOffset].commandID;
     context->buffer[2] = 0;
     context->writeValue(channel, false);
-    context->writeString(result, true);
+    context->writeValue(address, false);
+    context->writeValue(value, true);
 
     return true;
 }
 
-// Function handler: read an int (64bit) value from a specified register (64bit address)
+// Function handler: read an int (32bit) value from a specified register (32bit address)
 // for a specified channel
 bool CommProtocol::readRegister(CommProtocol* context, unsigned char cmdOffset) {
 
@@ -729,8 +742,8 @@ bool CommProtocol::readRegister(CommProtocol* context, unsigned char cmdOffset) 
 
     unsigned int address = context->getInt32Parameter(1);
 
-    unsigned char result[MAX_SERIAL_BUFLENGTH];
-    if (!context->sensorsArray->readGenericRegisterChannel(channel, address, result, MAX_SERIAL_BUFLENGTH)) {
+    unsigned int result = 0;
+    if (!context->sensorsArray->readGenericRegisterChannel(channel, address, result)) {
     	return false;
     }
 
@@ -738,7 +751,8 @@ bool CommProtocol::readRegister(CommProtocol* context, unsigned char cmdOffset) 
     context->buffer[1] = validCommands[cmdOffset].commandID;
     context->buffer[2] = 0;
     context->writeValue(channel, false);
-    context->writeString(result, true);
+    context->writeValue(address, false);
+    context->writeValue(result, true);
 
     return true;
 }

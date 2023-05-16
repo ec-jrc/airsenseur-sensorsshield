@@ -24,20 +24,25 @@
 
 #include "PIDDevice.h"
 #include "TControlEngine.h"
+#include "IntChamberTempRef.h"
 #include "CRC32Helper.h"
 #include "EEPROMHelper.h"
 #include "Persistence.h"
 
 // Defines the simulated registers useful to read/write PID coefficients
 // and store in the EEPROM to be persisted
-#define PID_REG_P_COEFF			0x0000
-#define PID_REG_I_COEFF			0x0001
-#define PID_REG_D_COEFF			0x0002
-#define PID_REG_MULTIPLIER		0x0003
-#define PID_REG_DEADZONE_HEAT	0x0004
-#define PID_REG_DEADZONE_COOL	0x0005
-#define PID_REG_STORE_COEFFS	0x0006
-#define PID_VAL_STORE_COEFFS	0xAA
+#define PID_REG_P_COEFF				0x0000
+#define PID_REG_I_COEFF				0x0001
+#define PID_REG_D_COEFF				0x0002
+#define PID_REG_DEADZONE_HEAT		0x0003
+#define PID_REG_DEADZONE_COOL		0x0004
+#define PID_REG_CHAMB_TEMP_SOURCE	x00005
+#define PID_REG_STORE_COEFFS		0x0006
+#define PID_VAL_STORE_COEFFS		0xAA
+
+#define PID_SHARED_MULTIPLIER_BIT	(1<<16)
+#define PID_VALID_DEADZONE_MAX		10000
+
 
 #define PIDDEV_DEFAULT_SAMPLE_RATE	9		/* 10 seconds default sample rate */
 
@@ -135,7 +140,7 @@ const char* PIDDevice::getMeasurementUnit(unsigned char channel) const {
 	return "";
 }
 
-float PIDDevice::evaluateMeasurement(unsigned char channel, float value) const {
+float PIDDevice::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
 
 	return value / 100;
 }
@@ -145,21 +150,14 @@ void PIDDevice::triggerSample() {
 	go = true;
 }
 
-#define NIBBLEBINTOHEX(a) ((a)>0x09)?(((a)-0x0A)+'A'):((a)+'0');
-
-bool PIDDevice::writeGenericRegister(unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize){
-
-	// Start with an error result
-	buffer[0] = 'K';
-	buffer[1] = 'O';
-	buffer[2] = '\0';
+bool PIDDevice::writeGenericRegister(unsigned int address, unsigned int value){
 
 	// Return an error for unhandled coefficients
 	if(address > PID_REG_STORE_COEFFS) {
-		return true;
+		return false;
 	}
 
-	// Store coefficients to the EEPROM
+	// Store coefficients to the EEPROM, when required
 	if (address == PID_REG_STORE_COEFFS) {
 
 		if (value == PID_VAL_STORE_COEFFS) {
@@ -169,90 +167,80 @@ bool PIDDevice::writeGenericRegister(unsigned int address, unsigned int value, u
 			writePIDCoefficientsToEEPROM();
 
 			// Return an OK result
-			buffer[0] = 'O';
-			buffer[1] = 'K';
 			return true;
 		}
 
-		return true;
+		// Return an error
+		return false;
 	}
 
-	// Temporary store the PID and multiplier coefficients
+	// Otherwise remember the PID and other coefficients
 	pidData.data.raw[address] = value;
 
 	// Return an OK result
-	buffer[0] = 'O';
-	buffer[1] = 'K';
-
 	return true;
 }
 
-bool PIDDevice::readGenericRegister(unsigned int address, unsigned char* buffer, unsigned char buffSize) {
+bool PIDDevice::readGenericRegister(unsigned int address, unsigned int& value) {
 
 	// Return an error for unhandled coefficients
 	if(address >= PID_REG_STORE_COEFFS) {
-
-		buffer[0] = 'K';
-		buffer[1] = 'O';
-		buffer[2] = '\0';
-
-		return true;
+		return false;
 	}
 
 	// We opt for reading the local copy of the coefficients. They are synchronized
 	// with the EEPROM values when the user writes PID_VAL_STORE_COEFFS to PID_REG_STORE_COEFFS
 	// (and after startup)
-	unsigned short value =  pidData.data.raw[address];
-
-	buffer[0] = NIBBLEBINTOHEX((value>>12)&0x0F);
-	buffer[1] = NIBBLEBINTOHEX((value>>8)&0x0F);
-	buffer[2] = NIBBLEBINTOHEX((value>>4)&0x0F);
-	buffer[3] = NIBBLEBINTOHEX(value&0x0F);
-	buffer[4] = '\0';
+	value = pidData.data.raw[address];
 
 	return true;
 }
 
-
 // Apply local PID coefficients to the PID engine
 void PIDDevice::applyPIDCoefficients() {
 
-	// Handle exceptions
-	if (pidData.data.coeff.mult == 0) {
-		return;
-	}
-
 	// Apply PID coefficients
-	float multiplier = pidData.data.coeff.mult;
-	float P = (float)pidData.data.coeff.P / multiplier;
-	float I = (float)pidData.data.coeff.I / multiplier;
-	float D = (float)pidData.data.coeff.D / multiplier;
+	float P = roundPIDCoefficient((float)pidData.data.coeff.P);
+	float I = roundPIDCoefficient((float)pidData.data.coeff.I);
+	float D = roundPIDCoefficient((float)pidData.data.coeff.D);
 
 	AS_TCONTROL.setCoefficients(P, I, D);
 	AS_TCONTROL.setOutMinMax(-10000, 10000);
 
 	// Apply min threshold for dead-zone cooling
-	if (pidData.data.coeff.dzCool != 0xFFFF) {
-		AS_TCONTROL.setCoolingStartPercentage(pidData.data.coeff.dzCool);
+	float dzCool = (float)pidData.data.coeff.dzCool;
+	if ((dzCool >= 0) && (dzCool <= PID_VALID_DEADZONE_MAX)) {
+		AS_TCONTROL.setCoolingStartPercentage((unsigned short)dzCool);
 	}
 
 	// Apply min threshold for dead-zone heating
-	if (pidData.data.coeff.dzHeat != 0xFFFF) {
-		AS_TCONTROL.setHeatingStartPercentage(pidData.data.coeff.dzHeat);
+	float dzHeat = (float)pidData.data.coeff.dzHeat;
+	if ((dzHeat >= 0) && (dzHeat <= PID_VALID_DEADZONE_MAX)) {
+		AS_TCONTROL.setHeatingStartPercentage((unsigned short)dzHeat);
+	}
+
+	// Apply reference source
+	if (pidData.data.coeff.refSource < (IntChamberTempRef::SOURCE_FIRST_INVALID)) {
+		AS_INTCH_TEMPREF.setSource((IntChamberTempRef::source) pidData.data.coeff.refSource);
 	}
 }
 
 // Write local PID coefficients to EEPROM
 void PIDDevice::writePIDCoefficientsToEEPROM() {
 
-	// Handle exceptions
-	if (pidData.data.coeff.mult == 0) {
-		return;
-	}
-
 	// Calculate the CRC
 	pidData.crc = CRC32.getCRC32((long*)&pidData, sizeof(pidcoeffs)-4);
 
 	// Store to EEPROM
 	EEPROM.write(PID_COEFFICIENTS, (unsigned char*)&pidData, sizeof(pidcoeffs));
+}
+
+// Apply some rounding to the float values in order to
+// overcome for float/int/float losses
+float PIDDevice::roundPIDCoefficient(float value) {
+
+	float result = value + 1;
+	result = ((float)((int)((result / PID_SHARED_MULTIPLIER_BIT) * 10000)))/10000;
+
+	return result;
 }

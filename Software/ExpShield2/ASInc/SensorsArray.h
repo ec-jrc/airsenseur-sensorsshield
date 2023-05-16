@@ -27,7 +27,7 @@
 #define	SENSORSARRAY_H
 
 #include "DitherTool.h"
-#include "SamplesAverager.h"
+class SamplesAverager;
 
 // Physical sensor devices
 #define SENSOR_SHT31_I		0x00
@@ -70,9 +70,15 @@
 #define CHANNEL_K96_TEMP_UCDIE			0x17
 #define CHANNEL_K96_RH0					0x18
 #define CHANNEL_K96_T_RH0				0x19
-#define CHANNEL_K96_ERRORSTATUS			0x1A
+#define CHANNEL_K96_LPL_UFLT_IR			0x1A
+#define CHANNEL_K96_SPL_UFLT_IR			0x1B
+#define CHANNEL_K96_MPL_UFLT_IR			0x1C
+#define CHANNEL_K96_ERRORSTATUS			0x1D
+#define CHANNEL_K96_LPL_UFLT_ERR		0x1E
+#define CHANNEL_K96_SPL_UFLT_ERR		0x1F
+#define CHANNEL_K96_MPL_UFLT_ERR		0x20
 
-#define NUM_OF_TOTAL_CHANNELS    		(CHANNEL_K96_ERRORSTATUS+1)
+#define NUM_OF_TOTAL_CHANNELS    		(CHANNEL_K96_MPL_UFLT_ERR+1)
 
 #define DEFAULT_AVERAGE_SAMPLENUM       60
 
@@ -96,8 +102,8 @@ public:
     bool getLastSample(unsigned char channel, unsigned short &lastSample, unsigned long &timestamp);
     bool getLastSample(unsigned char channel, float &lastSample, unsigned long &timestamp);
 
-    bool setSetpoint(unsigned char channel, unsigned char setPointVal);
-    bool getSetpoint(unsigned char channel, unsigned char& setPointVal);
+    bool setSetpoint(unsigned char channel, unsigned short setPointVal);
+    bool getSetpoint(unsigned char channel, unsigned short& setPointVal);
 
     void inquirySensor(unsigned char channel, unsigned char* buffer, unsigned char bufSize);
     bool savePreset(unsigned char channel, unsigned char *presetName, unsigned char bufSize);
@@ -108,8 +114,8 @@ public:
     bool getUnitForChannel(unsigned char channel, unsigned char* buffer, unsigned char buffSize);
     bool setEnableChannel(unsigned char channel, unsigned char enabled);
     bool getChannelIsEnabled(unsigned char channel, unsigned char *enabled);
-    bool writeGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize);
-    bool readGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned char* buffer, unsigned char buffSize);
+    bool writeGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int value);
+    bool readGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int& value);
 
     bool enableSampling(bool enable);
 
@@ -139,7 +145,7 @@ private:
 
     SensorDevice* const sensors[NUM_OF_TOTAL_SENSORS];			   	// Physical sensor units
     Sampler* const samplers[NUM_OF_TOTAL_SAMPLERS];               	// Sampler units for all channels
-    SamplesAverager* const averagers[NUM_OF_TOTAL_AVERAGERS];      	// Average samples calculators
+    SamplesAverager* const averagers[NUM_OF_TOTAL_AVERAGERS];   	// Average samples calculators
     
     bool samplingEnabled;                                   		// Sampling is default disabled
     volatile unsigned long timestamp;                               // Internal timestamp timer (in 0.01s)

@@ -25,6 +25,7 @@
 #include "K96Device.h"
 #include "SerialCHelper.h"
 #include "GPIOHelper.h"
+#include "IntChamberTempRef.h"
 #include <string.h>
 
 #define K96_MODBUS_TIMEOUT		19		/* We expect K96 answers in less 0.2 seconds */
@@ -72,7 +73,11 @@
 #define K96_FLAG_SPL_CALC_ERROR			0x4000
 #define K96_FLAG_LPL_CALC_ERROR			0x8000
 
-#define K96_RAM_METERID			0x0028
+#define K96_RAM_METERID					0x0028
+#define K96_RAM_MPL_UFLT_IR_SIGNAL		0x0384
+#define K96_RAM_LPL_UFLT_IR_SIGNAL		0x0424
+#define K96_RAM_SPL_UFLT_IR_SIGNAL		0x0484
+
 
 #define K96_MEASUREMENTS_NUMREG	10
 #define K96_ERRORSTATUS_REGSIZE	1
@@ -81,12 +86,16 @@
 
 const char* const K96Device::channelNames[] {
 		"LPLCPC", "SPLCPC", "MPLCPC",
-		"PSEN0", "TNTC0", "TNTC1", "TUCDIE", "RH0", "TRH0", "ERRST"
+		"PSEN0", "TNTC0", "TNTC1", "TUCDIE", "RH0", "TRH0",
+		"UFLPIR", "UFSPIR", "UFMPIR",
+		"ERRST", "LPLUER", "SPLUER", "MPLUER"
 };
 
 const char* const K96Device::channelMeasurementUnits[] = {
 		"ppm", "ppm", "ppm",
-		"hPa", "C", "C", "C", "%", "C", "bit"
+		"hPa", "C", "C", "C", "%", "C",
+		"u16", "u16", "u16",
+		"bit", "bit", "bit", "bit"
 };
 
 // ROM table for CRC calculation speedup
@@ -415,6 +424,8 @@ bool K96Device::init() {
 }
 
 #define SWAP_BYTES(a) (((((a)&0xFF00)>>8)&0xFF) | ((((a)&0xFF)<<8)&0xFF00))
+#define FROM_SHORT_TO_UNSIGNED_SHORT(a) ((unsigned short)((a) + 0x8000))
+#define FROM_UNSIGNED_SHORT_TO_SIGNED_SHORT(a) ((short)((a) - 0x8000))
 #define VALIDATE(errorStatus, flag, value) (((errorStatus) & (flag))? 0.0f : (value))
 
 void K96Device::loop() {
@@ -464,17 +475,28 @@ void K96Device::loop() {
 		case WAITING_SAMPLE: {
 			if (packetReceived) {
 
-				// Evaluate the received packet
-				setSample(K96_CHANNEL_LPL_PC_FLT, VALIDATE(lastErrorStatus, K96_FLAG_LPL_CALC_ERROR, SWAP_BYTES(rxBuffer.payload.measures.lpl_ConcPC_flt)));
-				setSample(K96_CHANNEL_SPL_PC_FLT, VALIDATE(lastErrorStatus, K96_FLAG_SPL_CALC_ERROR, SWAP_BYTES(rxBuffer.payload.measures.spl_ConcPC_flt)));
-				setSample(K96_CHANNEL_MPL_PC_FLT, VALIDATE(lastErrorStatus, K96_FLAG_MPL_CALC_ERROR, SWAP_BYTES(rxBuffer.payload.measures.mpl_ConcPC_flt)));
-				setSample(K96_CHANNEL_PRESS0,SWAP_BYTES(rxBuffer.payload.measures.p_Sensor0_flt));
-				setSample(K96_CHANNEL_TEMP_NTC0, VALIDATE(lastErrorStatus, K96_FLAG_NTC_TEMP_ERROR, SWAP_BYTES(rxBuffer.payload.measures.ntc0_Temp_flt)));
-				setSample(K96_CHANNEL_TEMP_NTC1, VALIDATE(lastErrorStatus, K96_FLAG_NTC_TEMP_ERROR, SWAP_BYTES(rxBuffer.payload.measures.ntc1_Temp_flt)));
-				setSample(K96_CHANNEL_TEMP_UCDIE, VALIDATE(lastErrorStatus, K96_FLAG_UCDIE_TEMP_ERROR, SWAP_BYTES(rxBuffer.payload.measures.aduCDie_Temp_flt)));
-				setSample(K96_CHANNEL_RH0,SWAP_BYTES(rxBuffer.payload.measures.rh_Sensor0));
-				setSample(K96_CHANNEL_T_RH0,SWAP_BYTES(rxBuffer.payload.measures.rh_T_Sensor0));
+				// Evaluate the received packet ad store samples
+				short tNtc0 = SWAP_BYTES(rxBuffer.payload.measures.ntc0_Temp_flt);
+				short tNtc1 = SWAP_BYTES(rxBuffer.payload.measures.ntc1_Temp_flt);
+				short tRh = SWAP_BYTES(rxBuffer.payload.measures.rh_T_Sensor0);
+
+				setSample(K96_CHANNEL_LPL_PC_FLT, FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.lpl_ConcPC_flt)));
+				setSample(K96_CHANNEL_SPL_PC_FLT, FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.spl_ConcPC_flt)));
+				setSample(K96_CHANNEL_MPL_PC_FLT, FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.mpl_ConcPC_flt)));
+				setSample(K96_CHANNEL_PRESS0, FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.p_Sensor0_flt)));
+				setSample(K96_CHANNEL_TEMP_NTC0, FROM_SHORT_TO_UNSIGNED_SHORT(tNtc0));
+				setSample(K96_CHANNEL_TEMP_NTC1, FROM_SHORT_TO_UNSIGNED_SHORT(tNtc1));
+				setSample(K96_CHANNEL_TEMP_UCDIE, FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.aduCDie_Temp_flt)));
+				setSample(K96_CHANNEL_RH0,FROM_SHORT_TO_UNSIGNED_SHORT(SWAP_BYTES(rxBuffer.payload.measures.rh_Sensor0)));
+				setSample(K96_CHANNEL_T_RH0, FROM_SHORT_TO_UNSIGNED_SHORT(tRh));
 				setSample(K96_CHANNEL_ERRORSTATUS,lastErrorStatus);
+
+				// Propagate the internal chamber temperature to the temperature
+				// reference control helper. Note: K96 already reports temperatures in 1/100 C
+				// as required by the reference control helper
+				AS_INTCH_TEMPREF.setReadTemperature(IntChamberTempRef::SOURCE_K96_TEMP_NTC0, tNtc0);
+				AS_INTCH_TEMPREF.setReadTemperature(IntChamberTempRef::SOURCE_K96_TEMP_NTC1, tNtc1);
+				AS_INTCH_TEMPREF.setReadTemperature(IntChamberTempRef::SOURCE_K96_T_RH0, tRh);
 
 				status = IDLE_READY;
 
@@ -482,6 +504,71 @@ void K96Device::loop() {
 				retry++;
 				if (retry < K96_MAX_RETRY) {
 					status = START_SAMPLING;
+				} else {
+
+					// Mark the unit as unavailable
+					status = UNAVAILABLE;
+					powerOn(false);
+				}
+			}
+		}
+		break;
+
+		// Ask for LPL_UFLT_IR RAM register
+		case READ_LPL_UFLT_IR: {
+			triggerReadRAM(K96_RAM_LPL_UFLT_IR_SIGNAL, sizeof(rxBuffer.payload.xPL_uflt_ram_con_cal));
+			status = WAITING_LPL_UFLT_IR;
+		}
+		break;
+
+		// Ask for SPL_UFLT_IR RAM register
+		case READ_SPL_UFLT_IR: {
+			triggerReadRAM(K96_RAM_SPL_UFLT_IR_SIGNAL, sizeof(rxBuffer.payload.xPL_uflt_ram_con_cal));
+			status = WAITING_SPL_UFLT_IR;
+		}
+		break;
+
+		// Ask for MPL_UFLT_IR RAM register
+		case READ_MPL_UFLT_IR: {
+			triggerReadRAM(K96_RAM_MPL_UFLT_IR_SIGNAL, sizeof(rxBuffer.payload.xPL_uflt_ram_con_cal));
+			status = WAITING_MPL_UFLT_IR;
+		}
+		break;
+
+		case WAITING_LPL_UFLT_IR:
+		case WAITING_SPL_UFLT_IR:
+		case WAITING_MPL_UFLT_IR: {
+			if (packetReceived) {
+
+				// Evaluate the read values
+				unsigned short irSignal = SWAP_BYTES(rxBuffer.payload.xPL_uflt_ram_con_cal.iR_Signal);
+				unsigned char channel = K96_CHANNEL_LPL_UFLT_IR + (int)status - (int)WAITING_LPL_UFLT_IR;
+
+				unsigned short error = SWAP_BYTES(rxBuffer.payload.xPL_uflt_ram_con_cal.error);
+				unsigned char errorChannel = K96_CHANNEL_LPL_UFLT_ERR + (int)status - (int)WAITING_LPL_UFLT_IR;
+
+				setSample(channel, irSignal);
+				setSample(errorChannel, error);
+
+				// Go to next status.
+				// For speed optimization, we suppose to have the LPL, SPL and MPL waiting
+				// status definitions all together in a sequence
+				if (status == WAITING_MPL_UFLT_IR) {
+					status = START_SAMPLING;
+				} else {
+					status = (k96states) ((int)READ_LPL_UFLT_IR + (int)status - (int)WAITING_LPL_UFLT_IR + 1);
+				}
+
+				powerUpTimer = K96_BLANK_TIME;
+				retry = 0;
+
+			} else if (cmdTimeout) {
+				retry++;
+				if (retry < K96_MAX_RETRY) {
+
+					// For speed optimization we suppose to have the LPL, SPL and MPL read
+					// status definitions all together in a sequence
+					status = (k96states)(READ_LPL_UFLT_IR + (int)status - (int)WAITING_LPL_UFLT_IR);
 				} else {
 
 					// Mark the unit as unavailable
@@ -519,7 +606,7 @@ void K96Device::loop() {
 					// No fatal errors found. Read the samples after a small time wait
 					powerUpTimer = K96_BLANK_TIME;
 					retry = 0;
-					status = START_SAMPLING;
+					status = READ_LPL_UFLT_IR;
 				}
 
 			} else if (cmdTimeout) {
@@ -620,15 +707,25 @@ const char* K96Device::getMeasurementUnit(unsigned char channel) const {
 	return "";
 }
 
-float K96Device::evaluateMeasurement(unsigned char channel, float value) const {
+float K96Device::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
 
+	// At the very startup, when no other samples are stored in the averager,
+	// best would be to answer with a 0 value, instead of trying to track which channel
+	// is in "S16" value and subtrack the offset (see note below)
+	if (firstSample) {
+		return 0.0f;
+	}
+
+	// Channels defined as "S16" in the K96 datasheet were handled as unsigned 16 bits
+	// in the shield, but with an added offset of "0x8000". We need to remove
+	// this offset before evaluating the float value
 	if ((channel >= K96_CHANNEL_LPL_PC_FLT) && (channel < K96_CHANNEL_PRESS0)) {
-		return value;
+		return value - 0x8000;
 	} else if (channel == K96_CHANNEL_PRESS0) {
-		return value / 10;
-	} else if ((channel >= K96_CHANNEL_TEMP_NTC0) && (channel < K96_CHANNEL_ERRORSTATUS)) {
-		return value / 100;
-	} else if (channel == K96_CHANNEL_ERRORSTATUS) {
+		return (value - 0x8000) / 10;
+	} else if ((channel >= K96_CHANNEL_TEMP_NTC0) && (channel < K96_CHANNEL_LPL_UFLT_IR)) {
+		return (value - 0x8000) / 100;
+	} else if (channel >= K96_CHANNEL_LPL_UFLT_IR) {
 		return value;
 	}
 

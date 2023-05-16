@@ -100,7 +100,9 @@ bool Sampler::loadPreset(unsigned char myID) {
     // Load channel enable status and setpoint
     for (int channel = 0; channel < numChannels; channel++) {
     	unsigned char read = EEPROM.read(SAMPLER_CHANNEL_ENABLED_PRESET(myID, channel));
-    	unsigned char setpoint = EEPROM.read(SAMPLER_CHANNEL_SETPOINT(myID, channel));
+    	unsigned char setpointLSB = EEPROM.read(SAMPLER_CHANNEL_SETPOINT(myID, channel));
+    	unsigned char setpointMSB = EEPROM.read(SAMPLER_CHANNEL_SETPOINT(myID, channel)+1);
+    	unsigned short setpoint = ((setpointMSB<<8)&0xFF00) | setpointLSB;
 
     	// Apply
     	setEnableChannel(channel, read);
@@ -120,29 +122,33 @@ bool Sampler::savePreset(unsigned char myID) {
     EEPROM.write(SAMPLER_CHANNEL_ENABLED_PRESET(myID, 0), (unsigned char*)enabled, numChannels);
 
     // Save channel setpoint for each channel
-    unsigned char* setpoints = new unsigned char [numChannels];
+    unsigned short* setpoints = new unsigned short [numChannels];
     memset(setpoints, 0, numChannels*sizeof(unsigned char));
+    bool bAtLeastOnePreset = false;
 
     for (unsigned char channel = 0; channel < numChannels; channel++) {
-    	unsigned char setpoint;
+    	unsigned short setpoint;
 
     	if (getSetpointForChannel(channel, setpoint)) {
+    		bAtLeastOnePreset = true;
     		setpoints[channel] = setpoint;
     	}
     }
-    EEPROM.write(SAMPLER_CHANNEL_SETPOINT(myID, 0), setpoints, numChannels);
+    if (bAtLeastOnePreset) {
+    	EEPROM.write(SAMPLER_CHANNEL_SETPOINT(myID, 0), (unsigned char*)setpoints, (numChannels * sizeof(unsigned short)));
+    }
 
     delete[] setpoints;
 
     return true;
 }
 
-bool Sampler::setSetpointForChannel(unsigned char channel, unsigned char setpoint) {
+bool Sampler::setSetpointForChannel(unsigned char channel, unsigned short setpoint) {
 
 	return sensor->setSetpointForChannel(channel, setpoint);
 }
 
-bool Sampler::getSetpointForChannel(unsigned char channel, unsigned char& setpoint) {
+bool Sampler::getSetpointForChannel(unsigned char channel, unsigned short& setpoint) {
 
 	return sensor->getSetpointForChannel(channel, setpoint);
 }

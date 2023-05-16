@@ -44,12 +44,12 @@ public:
 	virtual const char* getChannelName(unsigned char channel) const = 0;
 	virtual bool setChannelName(unsigned char channel, const char* name) = 0;
 	virtual const char* getMeasurementUnit(unsigned char channel) const = 0;
-	virtual float evaluateMeasurement(unsigned char channel, float value) const = 0;
+	virtual float evaluateMeasurement(unsigned char channel, float value, bool firstSample) const = 0;
 
-	virtual bool setSetpointForChannel(unsigned char channel, unsigned char setpoint);
-	virtual bool getSetpointForChannel(unsigned char channel, unsigned char& setpoint);
-	virtual bool writeGenericRegister(unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize);
-	virtual bool readGenericRegister(unsigned int address, unsigned char* buffer, unsigned char buffSize);
+	virtual bool setSetpointForChannel(unsigned char channel, unsigned short setpoint);
+	virtual bool getSetpointForChannel(unsigned char channel, unsigned short& setpoint);
+	virtual bool writeGenericRegister(unsigned int address, unsigned int value);
+	virtual bool readGenericRegister(unsigned int address, unsigned int& value);
 
 
 	virtual void triggerSample();

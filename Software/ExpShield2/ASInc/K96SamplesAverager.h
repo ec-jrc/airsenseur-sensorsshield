@@ -27,6 +27,8 @@
 
 #include "SamplesAverager.h"
 
+#define K96SAMPLEAVG_ERRORFIELDS	4
+
 class K96SamplesAverager : public SamplesAverager {
 public:
 	K96SamplesAverager(const unsigned char _channels);
@@ -37,7 +39,8 @@ public:
 	virtual float lastAveragedFloatValue(unsigned char channel);
 
 private:
-	unsigned short lastErrorValue;
+	unsigned short lastErrorValues[K96SAMPLEAVG_ERRORFIELDS];
+	bool clearLastError[K96SAMPLEAVG_ERRORFIELDS];
 	bool periodTerminated;
 };
 

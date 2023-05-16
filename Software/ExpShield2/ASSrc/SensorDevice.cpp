@@ -46,22 +46,22 @@ const unsigned char SensorDevice::getNumChannels() const {
 }
 
 // To be overridden only by devices allowing for setpoint
-bool SensorDevice::setSetpointForChannel(unsigned char channel, unsigned char setpoint) {
+bool SensorDevice::setSetpointForChannel(unsigned char channel, unsigned short setpoint) {
 	return false;
 }
 
 // To be overridden only by devices allowing for setpoint
-bool SensorDevice::getSetpointForChannel(unsigned char channel, unsigned char& setpoint) {
+bool SensorDevice::getSetpointForChannel(unsigned char channel, unsigned short& setpoint) {
 	return false;
 }
 
 // To be overridden only by devices allowing for writing a generic register/address
-bool SensorDevice::writeGenericRegister(unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize) {
+bool SensorDevice::writeGenericRegister(unsigned int address, unsigned int value) {
 	return false;
 }
 
-// To be overridden only by devices allowing for read a generic register/address
-bool SensorDevice::readGenericRegister(unsigned int address, unsigned char* buffer, unsigned char buffSize) {
+// To be overridden only by devices allowing for reading a generic register/address
+bool SensorDevice::readGenericRegister(unsigned int address, unsigned int& value) {
 	return false;
 }
 

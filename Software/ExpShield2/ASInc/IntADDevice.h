@@ -55,7 +55,7 @@ public:
 	virtual const char* getChannelName(unsigned char channel) const;
 	virtual bool setChannelName(unsigned char channel, const char* name);
 	virtual const char* getMeasurementUnit(unsigned char channel) const;
-	virtual float evaluateMeasurement(unsigned char channel, float value) const;
+	virtual float evaluateMeasurement(unsigned char channel, float value, bool firstSample) const;
 	virtual void triggerSample();
 
 	static const unsigned char defaultSampleRate();

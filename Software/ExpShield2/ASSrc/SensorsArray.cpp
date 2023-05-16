@@ -39,6 +39,7 @@
 #include "GPIOHelper.h"
 #include <string.h>
 
+
 #define BOARD_TYPE_EXP2_SENSORSHIELD		0x05
 
 #define GLOBAL_SAMPLE_PRESCALER_RATIO		100		/* 1 second */
@@ -72,7 +73,13 @@ const SensorsArray::channeltosamplersubchannel SensorsArray::chToSamplerSubChann
 		{ SENSOR_K96, K96_CHANNEL_TEMP_UCDIE, false },
 		{ SENSOR_K96, K96_CHANNEL_RH0, false },
 		{ SENSOR_K96, K96_CHANNEL_T_RH0, false },
-		{ SENSOR_K96, K96_CHANNEL_ERRORSTATUS, false }
+		{ SENSOR_K96, K96_CHANNEL_LPL_UFLT_IR, false },
+		{ SENSOR_K96, K96_CHANNEL_SPL_UFLT_IR, false },
+		{ SENSOR_K96, K96_CHANNEL_MPL_UFLT_IR, false },
+		{ SENSOR_K96, K96_CHANNEL_ERRORSTATUS, false },
+		{ SENSOR_K96, K96_CHANNEL_LPL_UFLT_ERR, false },
+		{ SENSOR_K96, K96_CHANNEL_SPL_UFLT_ERR, false },
+		{ SENSOR_K96, K96_CHANNEL_MPL_UFLT_ERR, false },
 };
 
 SensorsArray::SensorsArray() :
@@ -374,7 +381,7 @@ bool SensorsArray::getLastSample(unsigned char channel, float &lastSample, unsig
 			lastSample = averagers[chToSamplerSubChannel[channel].sampler]->lastAveragedFloatValue(chToSamplerSubChannel[channel].subchannel);
 
 			// Evaluate it. Evaluation is done by sensor devices
-			lastSample = sensors[chToSamplerSubChannel[channel].sampler]->evaluateMeasurement(chToSamplerSubChannel[channel].subchannel, lastSample);
+			lastSample = sensors[chToSamplerSubChannel[channel].sampler]->evaluateMeasurement(chToSamplerSubChannel[channel].subchannel, lastSample, timestamp == 0);
     	}
 
 		return true;
@@ -384,14 +391,14 @@ bool SensorsArray::getLastSample(unsigned char channel, float &lastSample, unsig
 }
 
 
-bool SensorsArray::setSetpoint(unsigned char channel, unsigned char setPointVal) {
+bool SensorsArray::setSetpoint(unsigned char channel, unsigned short setPointVal) {
 
 	return ((channel < NUM_OF_TOTAL_CHANNELS) &&
 			samplers[chToSamplerSubChannel[channel].sampler]->setSetpointForChannel(chToSamplerSubChannel[channel].subchannel, setPointVal));
 }
 
 
-bool SensorsArray::getSetpoint(unsigned char channel, unsigned char& setPointVal) {
+bool SensorsArray::getSetpoint(unsigned char channel, unsigned short& setPointVal) {
 
 	return ((channel < NUM_OF_TOTAL_CHANNELS) &&
 			samplers[chToSamplerSubChannel[channel].sampler]->getSetpointForChannel(chToSamplerSubChannel[channel].subchannel, setPointVal));
@@ -520,22 +527,22 @@ bool SensorsArray::getChannelIsEnabled(unsigned char channel, unsigned char *ena
 	return samplers[chToSamplerSubChannel[channel].sampler]->getChannelIsEnabled(chToSamplerSubChannel[channel].subchannel, enabled);
 }
 
-bool SensorsArray::writeGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int value, unsigned char* buffer, unsigned char buffSize) {
+bool SensorsArray::writeGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int value) {
 
 	if (channel >= NUM_OF_TOTAL_CHANNELS) {
 		return false;
 	}
 
-	return sensors[chToSamplerSubChannel[channel].sampler]->writeGenericRegister(address, value, buffer, buffSize);
+	return sensors[chToSamplerSubChannel[channel].sampler]->writeGenericRegister(address, value);
 }
 
-bool SensorsArray::readGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned char* buffer, unsigned char buffSize) {
+bool SensorsArray::readGenericRegisterChannel(unsigned char channel, unsigned int address, unsigned int& value) {
 
 	if (channel >= NUM_OF_TOTAL_CHANNELS) {
 		return false;
 	}
 
-	return sensors[chToSamplerSubChannel[channel].sampler]->readGenericRegister(address, buffer, buffSize);
+	return sensors[chToSamplerSubChannel[channel].sampler]->readGenericRegister(address, value);
 }
 
 

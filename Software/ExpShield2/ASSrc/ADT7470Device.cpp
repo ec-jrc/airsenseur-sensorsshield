@@ -24,6 +24,7 @@
 
 #include "ADT7470Device.h"
 #include "I2CBHelper.h"
+#include "IntChamberTempRef.h"
 
 #define ADT7470_I2C_ADDRESS 			(0x2C<<1)
 
@@ -55,9 +56,17 @@
 #define MIN_F_INT_HEATSINK_PERC			0x10
 #define MIN_F_AIR_CIR_PERC				0x10
 
-// Min and max temperature setpoint values in C degrees
-#define MIN_TEMPERATURE_SETPOINT		15
-#define MAX_TEMPERATURE_SETPOINT		40
+// Min and max temperature setpoint values in C/100 degrees
+#define MIN_TEMPERATURE_SETPOINT		 500
+#define MAX_TEMPERATURE_SETPOINT		4500
+
+// Invalid temperature
+#define INVALID_TEMPERATURE				32767
+
+// Last seen rotating thresholds
+#define MAX_LAST_SEEN_ROTATING			0xFFF0
+#define FANS_SPEED_MIN_ROTATING_THRESHOLD	500		// minimum threshold to consider a fan properly rotating
+#define FANS_SPEED_MAX_ROTATING_THRESHOLD	4000	// maximum threshold to consider a fan properly rotating
 
 const char* const ADT7470Device::channelNames[] {
 		"TICHMBR", "TEHTSNK", "TIHTSNK", "FEHTSNK", "FIHTSNK", "FACIRC"
@@ -80,6 +89,11 @@ const unsigned char ADT7470Device::defaultSampleRate() {
 
 ADT7470Device::ADT7470Device() : SensorDevice(ADT7470_NUM_CHANNELS),
 				go(false), error(false), communicationTimer(ADT7470_COMMUNICATION_PERIOD*3/4) {
+
+	for (unsigned char n = 0; n < ADT7470_NUM_FAN_CHANNELS; n++) {
+		fansSpeed[n] = 0xFFFF;
+		fansLastSeenRotating[n] = MAX_LAST_SEEN_ROTATING;
+	}
 }
 
 ADT7470Device::~ADT7470Device() {
@@ -105,6 +119,11 @@ void ADT7470Device::loop() {
 		// Communicate here with the device. Update the error status
 		readTemperatures();
 		readFanSpeeds();
+
+		// Propagate the internal chamber temperature to the temperature
+		// reference control helper
+		AS_INTCH_TEMPREF.setReadTemperature(IntChamberTempRef::SOURCE_ADT7470_T_INT_CHAMBER,
+											temperatures[ADT7470_CHANNEL_T_INT_CHAMBER]);
 	}
 
 	if (!error && go) {
@@ -153,7 +172,11 @@ const char* ADT7470Device::getMeasurementUnit(unsigned char channel) const {
 	return "";
 }
 
-float ADT7470Device::evaluateMeasurement(unsigned char channel, float value) const {
+float ADT7470Device::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
+
+	if (firstSample) {
+		return 0.0f;
+	}
 
 	if (channel < ADT7470_NUM_TEMPERATURE_CHANNELS) {
 
@@ -184,12 +207,12 @@ void ADT7470Device::triggerSample() {
 }
 
 
-bool ADT7470Device::setSetpointForChannel(unsigned char channel, unsigned char setpoint) {
+// Setpoints are expressed in 1/100 units
+bool ADT7470Device::setSetpointForChannel(unsigned char channel, unsigned short setpoint) {
 
 	if (channel < ADT7470_NUM_CHANNELS) {
 
 		// Check for setpoint validity.
-		// Setpoints are in 1/100 units
 		if (channel < ADT7470_NUM_TEMPERATURE_CHANNELS) {
 
 			// Avoid temperature setpoint to invalid values
@@ -199,15 +222,21 @@ bool ADT7470Device::setSetpointForChannel(unsigned char channel, unsigned char s
 				setpoint = MAX_TEMPERATURE_SETPOINT;
 			}
 
+			// Propagate the internal chamber temperature setpoint to the temperature
+			// reference control helper
+			if (channel == ADT7470_CHANNEL_T_INT_CHAMBER) {
+				AS_INTCH_TEMPREF.setSetpoint(setpoint);
+			}
+
 		} else {
 
 			// Clamp to 100% for fan speed
-			if (setpoint > 100) {
-				setpoint = 100;
+			if (setpoint > 10000) {
+				setpoint = 10000;
 			}
  		}
 
-		setpoints[channel] = setpoint * 100;
+		setpoints[channel] = setpoint;
 
 		return true;
 	}
@@ -216,10 +245,11 @@ bool ADT7470Device::setSetpointForChannel(unsigned char channel, unsigned char s
 }
 
 
-bool ADT7470Device::getSetpointForChannel(unsigned char channel, unsigned char& setpoint) {
+// Setpoints are expressed in 1/100 unit
+bool ADT7470Device::getSetpointForChannel(unsigned char channel, unsigned short& setpoint) {
 
 	if (channel < ADT7470_NUM_CHANNELS) {
-		setpoint = setpoints[channel] / 100;
+		setpoint = setpoints[channel];
 
 		return true;
 	}
@@ -263,16 +293,24 @@ bool ADT7470Device::init() {
 }
 
 // Temperatures are returned in 1/100 C units
-void ADT7470Device::getChamberSetpointAndTemperature(short& setpoint, short& temperature) {
+short ADT7470Device::getTemperatureForChannel(unsigned char channel) {
 
-	setpoint = setpoints[ADT7470_CHANNEL_T_INT_CHAMBER];
-	temperature = temperatures[ADT7470_CHANNEL_T_INT_CHAMBER];
+	if (channel > ADT7470_CHANNEL_T_INT_HEATSINK) {
+		return INVALID_TEMPERATURE;
+	}
+
+	return temperatures[channel];
+}
+
+// Temperatures are returned in 1/100 C units
+short ADT7470Device::getChamberTemperature() {
+	return getTemperatureForChannel(ADT7470_CHANNEL_T_INT_CHAMBER);
 }
 
 // Read temperatures registers and update the error status
 void ADT7470Device::readTemperatures() {
 
-	// Shutdow temperature measurement for a while
+	// Shutdown temperature measurement for a while
 	resetRegisterFlag(ADT7470_REG_CONFIGURATION1, ADT7470_T05_STB);
 	if (error) {
 		return;
@@ -293,17 +331,29 @@ void ADT7470Device::readTemperatures() {
 	setRegisterFlag(ADT7470_REG_CONFIGURATION1, ADT7470_T05_STB);
 }
 
-// Read fan speed registers and update the error status
+// Read fan speed registers and update the error and "last seen rotating" statuses
 void ADT7470Device::readFanSpeeds() {
 
 	for (unsigned char n = 0; n < ADT7470_NUM_FAN_CHANNELS; n++) {
 
+		// Update the last seen rotating independently by the fan speed reading.
+		// If we'll be able to read the speed of the fan it will be updated accordingly
+		if (fansLastSeenRotating[n] <= MAX_LAST_SEEN_ROTATING) {
+			fansLastSeenRotating[n]++;
+		}
+
+		// Read the fan rotation speed
 		unsigned char speedL, speedH;
 		error = !I2CB.read(ADT7470_I2C_ADDRESS, ADT7470_REG_BASE_FANTACH_R + (n<<1), 1, &speedL, 1);
 		if (!error) {
 			error = !I2CB.read(ADT7470_I2C_ADDRESS, ADT7470_REG_BASE_FANTACH_R + (n<<1) + 1, 1, &speedH, 1);
 			if (!error) {
 				fansSpeed[n] = (((unsigned short)speedH)<<8) + speedL;
+
+				// Update the last seen rotating accordingly
+				if ((fansSpeed[n] >= FANS_SPEED_MIN_ROTATING_THRESHOLD) && (fansSpeed[n] <= FANS_SPEED_MAX_ROTATING_THRESHOLD)) {
+					fansLastSeenRotating[n] = 0;
+				}
 			}
 		}
 	}
@@ -381,4 +431,15 @@ void ADT7470Device::setFanSpeed(unsigned char fanID, unsigned char percentage) {
 	unsigned char pwmValue = (percentage == 100)? 255 : (percentage * 2.57);
 
 	error = !I2CB.write(ADT7470_I2C_ADDRESS, ADT7470_REG_FANPWM_BASE + fanID, 1, &pwmValue, 1);
+}
+
+// Get the number of seconds since the last fan valid rotation seen
+unsigned short ADT7470Device::getFanLastSeenRotating(unsigned char fanID) {
+
+	fanID -= ADT7470_CHANNEL_F_EXT_HEATSINK;
+	if (fanID > ADT7470_NUM_FAN_CHANNELS) {
+		return MAX_LAST_SEEN_ROTATING;
+	}
+
+	return fansLastSeenRotating[fanID];
 }

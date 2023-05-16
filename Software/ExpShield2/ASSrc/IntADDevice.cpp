@@ -174,7 +174,11 @@ const char* IntADDevice::getMeasurementUnit(unsigned char channel) const {
 	return "";
 }
 
-float IntADDevice::evaluateMeasurement(unsigned char channel, float value) const {
+float IntADDevice::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
+
+	if (firstSample) {
+		return 0.0f;
+	}
 
 	float result = 0.0f;
 

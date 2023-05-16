@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include "SHT31Device.h"
 #include "I2CBHelper.h"
+#include "IntChamberTempRef.h"
 #include <GlobalHalHandlers.h>
 
 #define SHT31ONBOARDADDRESS             (0x44<<1)
@@ -104,7 +105,6 @@ void SHT31Device::loop() {
 		case START_SAMPLING: {
 			if (sendCommand(SHT31_CMD_START_LOWREP)) {
 				status = WAIT_FOR_SAMPLE;
-				// HAL_Delay(1);
 			}
 
 		}
@@ -115,6 +115,13 @@ void SHT31Device::loop() {
 			if (readData(&temperature, &humidity)) {
 				setSample(SHT31_CHANNEL_TEMPERATURE, temperature);
 				setSample(SHT31_CHANNEL_HUMIDITY, humidity);
+
+				// Propagate the internal chamber temperature to the temperature
+				// reference control helper
+				if (sensorAddress == SHT31ONBOARDADDRESS) {
+					double dTemp = evaluateMeasurement(SHT31_CHANNEL_TEMPERATURE, temperature, false) * 100;
+					AS_INTCH_TEMPREF.setReadTemperature(IntChamberTempRef::SOURCE_TEMPERATURE_I, (short) dTemp);
+				}
 			}
 			status = IDLE_READY;
 		}
@@ -158,7 +165,11 @@ const char* SHT31Device::getMeasurementUnit(unsigned char channel) const {
 	return "";
 }
 
-float SHT31Device::evaluateMeasurement(unsigned char channel, float value) const {
+float SHT31Device::evaluateMeasurement(unsigned char channel, float value, bool firstSample) const {
+
+	if (firstSample) {
+		return 0.0f;
+	}
 
 	if (channel == SHT31_CHANNEL_TEMPERATURE) {
 		return ((((double)value)/65535)*175)-45.0;

@@ -47,6 +47,7 @@ public:
     
 protected:
     unsigned long* getAccumulators() const;
+    bool isConsolidated() const;
 
 private:
     void reset();

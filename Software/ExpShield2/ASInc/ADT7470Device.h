@@ -58,11 +58,12 @@ public:
 	virtual const char* getChannelName(unsigned char channel) const;
 	virtual bool setChannelName(unsigned char channel, const char* name);
 	virtual const char* getMeasurementUnit(unsigned char channel) const;
-	virtual float evaluateMeasurement(unsigned char channel, float value) const;
+	virtual float evaluateMeasurement(unsigned char channel, float value, bool firstSample) const;
 	virtual void triggerSample();
 
-	virtual bool setSetpointForChannel(unsigned char channel, unsigned char setpoint);
-	virtual bool getSetpointForChannel(unsigned char channel, unsigned char& setpoint);
+	virtual bool setSetpointForChannel(unsigned char channel, unsigned short setpoint);
+	virtual bool getSetpointForChannel(unsigned char channel, unsigned short& setpoint);
+	unsigned short getFanLastSeenRotating(unsigned char fanID);
 
 	static const unsigned char defaultSampleRate();
 
@@ -75,7 +76,8 @@ public:
 	void setInternalFanSpeedAtSetpoint();
 	void setInternalFanSpeed(unsigned char percentage);
 
-	void getChamberSetpointAndTemperature(short& setpoint, short& temperature);
+	short getTemperatureForChannel(unsigned char channel);
+	short getChamberTemperature();
 
 	static ADT7470Device* const getInstance();
 
@@ -101,6 +103,7 @@ private:
 	unsigned char communicationTimer;
 	short temperatures[ADT7470_NUM_TEMPERATURE_CHANNELS];
 	unsigned short fansSpeed[ADT7470_NUM_FAN_CHANNELS];
+	unsigned short fansLastSeenRotating[ADT7470_NUM_FAN_CHANNELS]; // in seconds
 
 	// Temperature and fan setpoints in 1/100% units
 	unsigned short setpoints[ADT7470_NUM_CHANNELS];

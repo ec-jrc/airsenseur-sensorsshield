@@ -47,8 +47,8 @@ public:
     virtual bool savePreset(unsigned char myID);
     virtual bool loadPreset(unsigned char myID);
     
-    virtual bool setSetpointForChannel(unsigned char channel, unsigned char setpoint);
-    virtual bool getSetpointForChannel(unsigned char channel, unsigned char& setpoint);
+    virtual bool setSetpointForChannel(unsigned char channel, unsigned short setpoint);
+    virtual bool getSetpointForChannel(unsigned char channel, unsigned short& setpoint);
 
     virtual void onStartSampling();
     virtual void onStopSampling();

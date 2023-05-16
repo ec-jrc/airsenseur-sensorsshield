@@ -106,14 +106,14 @@ extern "C" {
 #define SAMPLER_CHANNEL_ENABLED_PRESET(a,b)	((0x1100 + (((unsigned short)(a))<<8)) + (b))
 
 // 2000 - 2000 -> Channel 0 setpoint, Sampler 0
-// 2001 - 2001 -> Channel 1 setpoint, Sampler 0
-// 2002 - 2002 -> Channel 2 setpoint, Sampler 0
+// 2002 - 2002 -> Channel 1 setpoint, Sampler 0
+// 2004 - 2004 -> Channel 2 setpoint, Sampler 0
 // ...
-// 2100 - 2101 -> Channel 0 setpoint Sampler 1
+// 2100 - 2100 -> Channel 0 setpoint Sampler 1
 // ...
 // a: sampler
 // b: relative channel
-#define SAMPLER_CHANNEL_SETPOINT(a,b)		((0x2000 + (((unsigned short)(a))<<8)) + (b))
+#define SAMPLER_CHANNEL_SETPOINT(a,b)		((0x2000 + (((unsigned short)(a))<<8)) + ((b)<<1))
 
 // Other constants to be persisted
 #define PID_COEFFICIENTS				0x7000	/* to 0x700F */
